@@ -163,16 +163,25 @@
         class="menu-item"
         onclick="mudarEtapa(5)">
 
-    05 - CARACTERÍSTICAS
+    05 - PERÍCIAS
+
+</button>
+
+
+<button type="button"
+        class="menu-item"
+        onclick="mudarEtapa(6)">
+
+    06 - CARACTERÍSTICAS
 
 </button>
 
 
 <button type="button"
         class="menu-item paranormal"
-        onclick="mudarEtapa(6)">
+        onclick="mudarEtapa(7)">
 
-    06 - O PARANORMAL
+    07 - O PARANORMAL
 
 </button>
 
@@ -284,7 +293,7 @@
 
     <p>PONTOS DISPONÍVEIS</p>
 
-    <strong id="pontosDisponiveis">5</strong>
+    <strong id="pontosDisponiveis">3</strong>
 
 </div>
 
@@ -356,6 +365,8 @@
                 Conhecimento, lógica, investigação e aprendizado.
             </p>
 
+            <span id="intelectoEfeito" class="atributo-efeito">+1 perícia treinável</span>
+
         </div>
 
 
@@ -383,6 +394,8 @@
                 Carisma, determinação, influência e força de vontade.
             </p>
 
+            <span id="presencaEfeito" class="atributo-efeito">PE +1</span>
+
         </div>
 
 
@@ -409,6 +422,8 @@
             <p>
                 Resistência, vitalidade, fôlego e sobrevivência.
             </p>
+
+            <span id="vigorEfeito" class="atributo-efeito">PV +1</span>
 
         </div>
 
@@ -626,11 +641,63 @@
 
 <!-- ================================================= -->
 
-<!-- ETAPA 5 - CARACTERÍSTICAS -->
+<!-- ETAPA 5 - PERÍCIAS -->
 
 <!-- ================================================= -->
 
 <div id="etapa5" class="etapa">
+
+<div class="titulo-etapa">
+
+    <h2>PERÍCIAS</h2>
+
+    <p>
+        Escolha em quais perícias seu personagem foi treinado.
+        Cada perícia usa um atributo — você só pode treinar tantas perícias daquele
+        atributo quanto o valor do próprio atributo, e o total de perícias treinadas
+        não pode passar do limite da sua classe.
+    </p>
+
+</div>
+
+
+<div id="resumoPericias" class="resumo-pericias"></div>
+
+
+<div id="listaPericias" class="lista-pericias"></div>
+
+
+<div class="navegacao">
+
+    <button type="button"
+            class="botao-secundario"
+            onclick="mudarEtapa(4)">
+
+        VOLTAR
+
+    </button>
+
+
+    <button type="button"
+            class="botao-principal"
+            onclick="mudarEtapa(6)">
+
+        PRÓXIMO
+
+    </button>
+
+</div>
+
+
+</div>
+
+<!-- ================================================= -->
+
+<!-- ETAPA 6 - CARACTERÍSTICAS -->
+
+<!-- ================================================= -->
+
+<div id="etapa6" class="etapa">
 
 <div class="titulo-etapa">
 
@@ -652,7 +719,7 @@
 <div class="navegacao">
 
     <button class="botao-secundario"
-            onclick="mudarEtapa(4)">
+            onclick="mudarEtapa(5)">
 
         VOLTAR
 
@@ -660,7 +727,7 @@
 
 
     <button class="botao-principal"
-            onclick="mudarEtapa(6)">
+            onclick="mudarEtapa(7)">
 
         PRÓXIMO
 
@@ -673,11 +740,11 @@
 
 <!-- ================================================= -->
 
-<!-- ETAPA 6 - O PARANORMAL -->
+<!-- ETAPA 7 - O PARANORMAL -->
 
 <!-- ================================================= -->
 
-<div id="etapa6" class="etapa">
+<div id="etapa7" class="etapa">
 
 
 <div class="titulo-etapa">
@@ -740,7 +807,7 @@
 <div class="navegacao">
 
     <button class="botao-secundario"
-            onclick="mudarEtapa(5)">
+            onclick="mudarEtapa(6)">
 
         VOLTAR
 
@@ -901,6 +968,15 @@
         <h3>PROFICIÊNCIAS</h3>
 
         <p id="fichaProficiencias"></p>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>PERÍCIAS TREINADAS</h3>
+
+        <p id="fichaPericias"></p>
 
     </div>
 

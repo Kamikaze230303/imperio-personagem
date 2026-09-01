@@ -332,6 +332,17 @@ textarea {
     color: #aaa;
 }
 
+.atributo-efeito {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 10px;
+    background: rgba(199,168,91,.12);
+    border: 1px solid rgba(199,168,91,.4);
+    color: var(--dourado);
+    font-size: 12px;
+    letter-spacing: .5px;
+}
+
 .controle {
     display: flex;
     align-items: center;
@@ -349,6 +360,154 @@ textarea {
 .controle strong {
     color: var(--vermelho-claro);
     font-size: 28px;
+}
+
+/* PERÍCIAS */
+
+.resumo-pericias {
+    margin-bottom: 30px;
+}
+
+.resumo-pericias .pontos-box small {
+    display: block;
+    color: #aaa;
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.grupo-pericias {
+    margin-bottom: 30px;
+}
+
+.grupo-pericias-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #333;
+}
+
+.grupo-pericias-header h3 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 19px;
+}
+
+.grupo-pericias-header .grupo-abrev {
+    color: #888;
+    font-size: 14px;
+}
+
+.grupo-contador {
+    color: var(--vermelho-claro);
+    font-family: "Cinzel", serif;
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+
+.grupo-pericias-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.pericia-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(12,12,12,.92);
+    border: 1px solid #333;
+    cursor: pointer;
+    transition: .2s;
+    position: relative;
+}
+
+.pericia-item input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.pericia-check {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: 2px solid #555;
+    background: #111;
+    position: relative;
+    transition: .2s;
+}
+
+.pericia-item:hover:not(.bloqueada) {
+    border-color: var(--dourado);
+}
+
+.pericia-item:hover:not(.bloqueada) .pericia-check {
+    border-color: var(--dourado);
+}
+
+.pericia-item.selecionada {
+    border-color: var(--vermelho-claro);
+    background: rgba(100,0,0,.3);
+}
+
+.pericia-item.selecionada .pericia-check {
+    background: var(--vermelho-claro);
+    border-color: var(--vermelho-claro);
+}
+
+.pericia-item.selecionada .pericia-check::after {
+    content: "✓";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+}
+
+.pericia-item.bloqueada {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.pericia-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.pericia-nome {
+    font-family: "Cinzel", serif;
+    color: white;
+    font-size: 15px;
+}
+
+.pericia-item.selecionada .pericia-nome {
+    color: var(--dourado);
+}
+
+.pericia-motivo {
+    color: #888;
+    font-size: 12px;
+    letter-spacing: .5px;
+}
+
+.pericia-bonus {
+    flex-shrink: 0;
+    color: var(--vermelho-claro);
+    font-family: "Cinzel", serif;
+    font-size: 18px;
+    min-width: 32px;
+    text-align: right;
 }
 
 /* CATEGORIAS */

@@ -7,7 +7,7 @@
 // ============================================================
 
 let etapaAtual = 1;
-let pontosDisponiveis = 5;
+let pontosDisponiveis = 3;
 
 let origemSelecionada = null;
 let categoriaSelecionada = "";
@@ -20,6 +20,254 @@ let atributos = {
     presenca: 1,
     vigor: 1
 };
+
+let periciasSelecionadas = [];
+
+// ============================================================
+// PERÍCIAS
+// ============================================================
+
+const periciasBase = {
+    combatente: 1,
+    ocultista: 3,
+    especialista: 7
+};
+
+const listaDePericias = [
+    { nome: "Acrobacia", atributo: "agilidade" },
+    { nome: "Adestramento", atributo: "presenca", somenteTreinada: true },
+    { nome: "Artes", atributo: "presenca", somenteTreinada: true },
+    { nome: "Atletismo", atributo: "forca" },
+    { nome: "Atualidades", atributo: "intelecto" },
+    { nome: "Ciências", atributo: "intelecto", somenteTreinada: true },
+    { nome: "Crime", atributo: "agilidade" },
+    { nome: "Diplomacia", atributo: "presenca" },
+    { nome: "Enganação", atributo: "presenca" },
+    { nome: "Fortitude", atributo: "vigor" },
+    { nome: "Furtividade", atributo: "agilidade" },
+    { nome: "Iniciativa", atributo: "agilidade" },
+    { nome: "Intimidação", atributo: "presenca" },
+    { nome: "Intuição", atributo: "presenca" },
+    { nome: "Investigação", atributo: "intelecto" },
+    { nome: "Luta", atributo: "forca" },
+    { nome: "Medicina", atributo: "intelecto" },
+    { nome: "Ocultismo", atributo: "intelecto", somenteTreinada: true },
+    { nome: "Percepção", atributo: "presenca" },
+    { nome: "Pilotagem", atributo: "agilidade", somenteTreinada: true },
+    { nome: "Pontaria", atributo: "agilidade" },
+    { nome: "Profissão", atributo: "intelecto", somenteTreinada: true },
+    { nome: "Reflexos", atributo: "agilidade" },
+    { nome: "Religião", atributo: "presenca", somenteTreinada: true },
+    { nome: "Sobrevivência", atributo: "intelecto" },
+    { nome: "Tática", atributo: "intelecto", somenteTreinada: true },
+    { nome: "Tecnologia", atributo: "intelecto", somenteTreinada: true },
+    { nome: "Vontade", atributo: "presenca" }
+];
+
+const abreviacaoAtributo = {
+    agilidade: "AGI",
+    forca: "FOR",
+    intelecto: "INT",
+    presenca: "PRE",
+    vigor: "VIG"
+};
+
+// Limite total de perícias treinadas, de acordo com a classe escolhida
+function limitePericias() {
+    if (!categoriaSelecionada || !(categoriaSelecionada in periciasBase)) {
+        return 0;
+    }
+
+    return periciasBase[categoriaSelecionada] + atributos.intelecto;
+}
+
+// Quantas perícias já treinadas usam um determinado atributo
+function contarPericiasPorAtributo(atributo) {
+    return periciasSelecionadas.filter(nome => {
+        const pericia = listaDePericias.find(p => p.nome === nome);
+        return pericia && pericia.atributo === atributo;
+    }).length;
+}
+
+// Remove seleções que não são mais válidas (ex.: classe ou atributos mudaram)
+function sanearPericias() {
+    const limite = limitePericias();
+
+    periciasSelecionadas = periciasSelecionadas.filter((nome, indice, array) => {
+        if (indice >= limite) return false;
+
+        const pericia = listaDePericias.find(p => p.nome === nome);
+        if (!pericia) return false;
+
+        const jaContadas = array
+            .slice(0, indice)
+            .filter(n => {
+                const p = listaDePericias.find(item => item.nome === n);
+                return p && p.atributo === pericia.atributo;
+            }).length;
+
+        return jaContadas < atributos[pericia.atributo];
+    });
+}
+
+function togglePericia(nome) {
+    const pericia = listaDePericias.find(p => p.nome === nome);
+    if (!pericia) return;
+
+    const jaSelecionada = periciasSelecionadas.includes(nome);
+
+    if (jaSelecionada) {
+        periciasSelecionadas = periciasSelecionadas.filter(n => n !== nome);
+        mostrarPericias();
+        return;
+    }
+
+    const limite = limitePericias();
+
+    if (periciasSelecionadas.length >= limite) {
+        alert("Você já treinou o número máximo de perícias permitido pela sua classe.");
+        return;
+    }
+
+    const usadasDoAtributo = contarPericiasPorAtributo(pericia.atributo);
+
+    if (usadasDoAtributo >= atributos[pericia.atributo]) {
+        alert(
+            `Você só pode treinar até ${atributos[pericia.atributo]} ` +
+            `perícia(s) de ${abreviacaoAtributo[pericia.atributo]}, ` +
+            "de acordo com o valor desse atributo."
+        );
+        return;
+    }
+
+    periciasSelecionadas.push(nome);
+    mostrarPericias();
+}
+
+// Texto combinando as perícias grátis da origem com as escolhidas na etapa 5
+function textoPericias() {
+    const nomesOrigem = origemSelecionada ? origemSelecionada.pericias : [];
+    const todas = [...new Set([...nomesOrigem, ...periciasSelecionadas])];
+
+    if (todas.length === 0) {
+        return "Nenhuma perícia treinada ainda.";
+    }
+
+    return todas.map(nome => {
+        const pericia = listaDePericias.find(p => p.nome === nome);
+
+        if (!pericia) return nome;
+
+        const bonus = atributos[pericia.atributo] * 5;
+
+        return `${nome} (${abreviacaoAtributo[pericia.atributo]}, +${bonus})`;
+    }).join(", ");
+}
+
+function mostrarPericias() {
+    sanearPericias();
+
+    const resumo = document.getElementById("resumoPericias");
+    const lista = document.getElementById("listaPericias");
+
+    if (!lista) return;
+
+    if (!categoriaSelecionada) {
+        if (resumo) {
+            resumo.innerHTML = `
+                <p class="aviso-vazio">
+                    Escolha uma classe antes de treinar perícias.
+                </p>
+            `;
+        }
+
+        lista.innerHTML = "";
+        return;
+    }
+
+    const limite = limitePericias();
+
+    if (resumo) {
+        resumo.innerHTML = `
+            <div class="pontos-box">
+                <p>PERÍCIAS TREINADAS</p>
+                <strong>${periciasSelecionadas.length} / ${limite}</strong>
+                <small>Limite da classe: ${periciasBase[categoriaSelecionada]} + Intelecto (${atributos.intelecto})</small>
+            </div>
+        `;
+    }
+
+    const nomesAtributo = {
+        agilidade: "Agilidade",
+        forca: "Força",
+        intelecto: "Intelecto",
+        presenca: "Presença",
+        vigor: "Vigor"
+    };
+
+    const ordemAtributos = ["agilidade", "forca", "intelecto", "presenca", "vigor"];
+
+    lista.innerHTML = ordemAtributos.map(atributo => {
+        const valorAtributo = atributos[atributo];
+        const usadasDoAtributo = contarPericiasPorAtributo(atributo);
+
+        const itensHTML = listaDePericias
+            .filter(pericia => pericia.atributo === atributo)
+            .map(pericia => {
+                const selecionada = periciasSelecionadas.includes(pericia.nome);
+                const bonus = selecionada ? valorAtributo * 5 : 0;
+
+                const limiteAtributoAtingido = usadasDoAtributo >= valorAtributo;
+                const limiteTotalAtingido = periciasSelecionadas.length >= limite;
+                const bloqueada = !selecionada && (limiteTotalAtingido || limiteAtributoAtingido);
+
+                let motivo = "";
+                if (bloqueada) {
+                    motivo = limiteAtributoAtingido
+                        ? "Atributo cheio"
+                        : "Limite da classe atingido";
+                }
+
+                return `
+                    <label class="pericia-item ${selecionada ? "selecionada" : ""} ${bloqueada ? "bloqueada" : ""}">
+
+                        <input type="checkbox"
+                               ${selecionada ? "checked" : ""}
+                               ${bloqueada ? "disabled" : ""}
+                               onchange="togglePericia('${pericia.nome}')">
+
+                        <span class="pericia-check"></span>
+
+                        <span class="pericia-info">
+                            <span class="pericia-nome">
+                                ${pericia.nome}${pericia.somenteTreinada ? "*" : ""}
+                            </span>
+                            ${bloqueada ? `<span class="pericia-motivo">${motivo}</span>` : ""}
+                        </span>
+
+                        <span class="pericia-bonus">+${bonus}</span>
+
+                    </label>
+                `;
+            })
+            .join("");
+
+        return `
+            <div class="grupo-pericias">
+
+                <div class="grupo-pericias-header">
+                    <h3>${nomesAtributo[atributo]} <span class="grupo-abrev">(${abreviacaoAtributo[atributo]})</span></h3>
+                    <span class="grupo-contador">${usadasDoAtributo} / ${valorAtributo} treinadas</span>
+                </div>
+
+                <div class="grupo-pericias-lista">
+                    ${itensHTML}
+                </div>
+
+            </div>
+        `;
+    }).join("");
+}
 
 // ============================================================
 // ORIGENS
@@ -1073,7 +1321,7 @@ function atualizarProgresso() {
     const barra = document.getElementById("barraProgresso");
     const texto = document.getElementById("textoProgresso");
 
-    const totalEtapas = 6;
+    const totalEtapas = 7;
 
     if (barra) {
         barra.style.width = ((etapaAtual / totalEtapas) * 100) + "%";
@@ -1115,7 +1363,27 @@ function alterarAtributo(nome, valor) {
         pontos.textContent = pontosDisponiveis;
     }
 
+    atualizarEfeitosDeAtributo();
     atualizarCaracteristicas();
+}
+
+// Atualiza os textos "PV +N", "PE +N" e "+N perícia(s)" nos cards de atributo
+function atualizarEfeitosDeAtributo() {
+    const vigorEfeito = document.getElementById("vigorEfeito");
+    if (vigorEfeito) {
+        vigorEfeito.textContent = `PV +${atributos.vigor}`;
+    }
+
+    const presencaEfeito = document.getElementById("presencaEfeito");
+    if (presencaEfeito) {
+        presencaEfeito.textContent = `PE +${atributos.presenca}`;
+    }
+
+    const intelectoEfeito = document.getElementById("intelectoEfeito");
+    if (intelectoEfeito) {
+        const plural = atributos.intelecto === 1 ? "perícia treinável" : "perícias treináveis";
+        intelectoEfeito.textContent = `+${atributos.intelecto} ${plural}`;
+    }
 }
 
 // ============================================================
@@ -1420,6 +1688,9 @@ function atualizarCaracteristicas() {
 
             <h3>PROFICIÊNCIAS</h3>
             <p>${classeSelecionada.proficiencias}</p>
+
+            <h3>PERÍCIAS TREINADAS</h3>
+            <p>${textoPericias()}</p>
         </div>
 
         ${origemSelecionada ? `
@@ -1544,6 +1815,8 @@ function obterPersonagem() {
             ? classeSelecionada.san
             : 0,
 
+        pericias: textoPericias(),
+
         respostaParanormal:
             respostaEle?.dataset.resposta || "Não respondido",
 
@@ -1594,6 +1867,7 @@ function preencherFicha(personagem) {
         fichaPV: personagem.pv,
         fichaPE: personagem.pe,
         fichaSAN: personagem.san,
+        fichaPericias: personagem.pericias,
         fichaAgilidade: personagem.atributos.agilidade,
         fichaForca: personagem.atributos.forca,
         fichaIntelecto: personagem.atributos.intelecto,
@@ -1747,6 +2021,9 @@ function gerarPDF() {
     escrever("Presença", personagem.atributos.presenca);
     escrever("Vigor", personagem.atributos.vigor);
 
+    titulo("PERÍCIAS");
+    escrever("", personagem.pericias);
+
     titulo("APARÊNCIA");
     escrever("", personagem.aparencia);
 
@@ -1857,6 +2134,8 @@ Intelecto: ${personagem.atributos.intelecto}
 Presença: ${personagem.atributos.presenca}
 Vigor: ${personagem.atributos.vigor}
 
+Perícias: ${personagem.pericias}
+
 "ELE SEMPRE SOUBE."`;
 
     if (navigator.share) {
@@ -1895,6 +2174,16 @@ Vigor: ${personagem.atributos.vigor}
 
 async function compartilharSite() {
     const link = window.location.href;
+
+    if (window.location.protocol === "file:") {
+        alert(
+            "Este site ainda está aberto como um arquivo no seu computador (endereço começando com \"file:///\"), " +
+            "então esse link só funciona na sua própria máquina — ninguém mais consegue abri-lo.\n\n" +
+            "Para poder compartilhar um link de verdade, primeiro hospede os arquivos (index.html, style.css e script.js) " +
+            "em algum lugar online, como GitHub Pages, Netlify ou Vercel. Depois disso, este botão vai copiar o link público correto."
+        );
+        return;
+    }
 
     if (navigator.share) {
         try {
@@ -1961,7 +2250,7 @@ function criarPersonagem() {
 }
 
 function mudarEtapa(novaEtapa) {
-    if (novaEtapa < 1 || novaEtapa > 6) return;
+    if (novaEtapa < 1 || novaEtapa > 7) return;
 
     document.querySelectorAll(".etapa").forEach(etapa => {
         etapa.classList.remove("ativa");
@@ -1982,6 +2271,8 @@ function mudarEtapa(novaEtapa) {
     if (novaEtapa === 4) {
         mostrarOrigens();
     } else if (novaEtapa === 5) {
+        mostrarPericias();
+    } else if (novaEtapa === 6) {
         atualizarCaracteristicas();
     }
 
@@ -1993,6 +2284,7 @@ function mudarEtapa(novaEtapa) {
 
 document.addEventListener("DOMContentLoaded", () => {
     atualizarProgresso();
+    atualizarEfeitosDeAtributo();
 });
 // Transição da Tela Inicial para o Criador
 function criarPersonagem() {
