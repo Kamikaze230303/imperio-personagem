@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>"IMPÉRIO" - Criação de Personagem</title>
+
+<link rel="stylesheet" href="style.css">
+
+
+</head>
+
+<body>
+
+<div class="background"></div>
+
+<!-- ================================================= -->
+
+<!-- TELA INICIAL -->
+
+<!-- ================================================= -->
+
+<section id="inicio" class="tela ativa">
+
+<div class="inicio-conteudo">
+
+    <div class="simbolo">⛩</div>
+
+    <h1>"IMPÉRIO"</h1>
+
+    <p class="subtitulo">
+        O PASSADO NUNCA MORREU.
+    </p>
+
+    <div class="linha"></div>
+
+    <p class="historia">
+        Você já se perguntou o que aconteceu no antigo Japão?
+        Se existia o <span class="destaque">Paranormal</span>?
+    </p>
+
+    <p class="historia">
+        Talvez essas perguntas possam ser respondidas.
+        Afinal, <strong>ELE</strong> sabe.
+    </p>
+
+    <p class="ele">
+        MAS QUEM É ELE?
+    </p>
+
+    <p class="historia">
+        ELE existe?
+        Talvez você esteja começando a delirar...
+    </p>
+
+    <p class="observa">
+        ELE SEMPRE SOUBE. ELE SEMPRE VAI SABER.
+    </p>
+
+    <br><br>
+
+    <button type="button"
+            class="botao-principal"
+            onclick="criarPersonagem()">
+
+        CRIAR PERSONAGEM
+
+    </button>
+
+</div>
+
+
+</section>
+
+<!-- ================================================= -->
+
+<!-- CRIADOR -->
+
+<!-- ================================================= -->
+
+<section id="criador" class="tela">
+
+<header>
+
+
+<div class="logo">
+
+    ⛩ "IMPÉRIO"
+
+</div>
+
+
+<div class="progresso">
+
+    <span id="textoProgresso">
+
+        ETAPA 1 DE 6
+
+    </span>
+
+
+    <div class="barra-progresso">
+
+        <div id="barraProgresso"></div>
+
+    </div>
+
+</div>
+
+
+</header>
+
+<main>
+
+<!-- MENU -->
+
+<aside class="menu-lateral">
+
+
+<button type="button"
+        class="menu-item ativo"
+        onclick="mudarEtapa(1)">
+
+    01 - IDENTIDADE
+
+</button>
+
+
+<button type="button"
+        class="menu-item"
+        onclick="mudarEtapa(2)">
+
+    02 - ATRIBUTOS
+
+</button>
+
+
+<button type="button"
+        class="menu-item"
+        onclick="mudarEtapa(3)">
+
+    03 - CLASSE
+
+</button>
+
+
+<button type="button"
+        class="menu-item"
+        onclick="mudarEtapa(4)">
+
+    04 - ORIGEM
+
+</button>
+
+
+<button type="button"
+        class="menu-item"
+        onclick="mudarEtapa(5)">
+
+    05 - CARACTERÍSTICAS
+
+</button>
+
+
+<button type="button"
+        class="menu-item paranormal"
+        onclick="mudarEtapa(6)">
+
+    06 - O PARANORMAL
+
+</button>
+
+
+</aside>
+
+<section class="conteudo-criacao">
+
+<!-- ================================================= -->
+
+<!-- ETAPA 1 - IDENTIDADE -->
+
+<!-- ================================================= -->
+
+<div id="etapa1" class="etapa ativa">
+
+
+<div class="titulo-etapa">
+    <div>
+        <h2>IDENTIDADE</h2>
+        <p>Defina quem é seu personagem.</p>
+    </div>
+</div>
+
+<div class="formulario">
+
+    <div class="campo">
+        <label>PERSONAGEM</label>
+        <input type="text"
+               id="personagem"
+               placeholder="Nome do personagem">
+    </div>
+
+    <div class="campo">
+        <label>JOGADOR</label>
+        <input type="text"
+               id="jogador"
+               placeholder="Nome do jogador">
+    </div>
+
+    <div class="campo grande">
+        <label>APARÊNCIA</label>
+        <textarea id="aparencia"
+                  placeholder="Descreva a aparência do personagem..."></textarea>
+    </div>
+
+    <div class="campo grande">
+        <label>PERSONALIDADE</label>
+        <textarea id="personalidade"
+                  placeholder="Descreva a personalidade do personagem..."></textarea>
+    </div>
+
+    <div class="campo grande">
+        <label>HISTÓRICO</label>
+        <textarea id="historico"
+                  placeholder="Conte o histórico do personagem..."></textarea>
+    </div>
+
+    <div class="campo grande">
+        <label>OBJETIVO</label>
+        <textarea id="objetivo"
+                  placeholder="Qual é o objetivo do personagem?"></textarea>
+    </div>
+
+</div>
+
+<div class="navegacao">
+
+    <div></div>
+
+    <button type="button"
+            class="botao-principal"
+            onclick="mudarEtapa(2)">
+
+        PRÓXIMO
+
+    </button>
+
+</div>
+
+
+</div>
+
+<!-- ================================================= -->
+
+<!-- ETAPA 2 - ATRIBUTOS -->
+
+<!-- ================================================= -->
+
+<div id="etapa2" class="etapa">
+
+
+<div class="titulo-etapa">
+
+    <div>
+
+        <h2>ATRIBUTOS</h2>
+
+        <p>
+            Distribua seus pontos entre os atributos.
+        </p>
+
+    </div>
+
+</div>
+
+
+<div class="pontos-box">
+
+    <p>PONTOS DISPONÍVEIS</p>
+
+    <strong id="pontosDisponiveis">5</strong>
+
+</div>
+
+
+<div class="atributos">
+
+
+    <div class="atributo">
+
+        <div class="atributo-info">
+
+            <h3>AGILIDADE</h3>
+
+            <p>
+                Velocidade, reflexos, mira e precisão.
+            </p>
+
+        </div>
+
+
+        <div class="controle">
+
+            <button onclick="alterarAtributo('agilidade', -1)">-</button>
+
+            <strong id="agilidade">1</strong>
+
+            <button onclick="alterarAtributo('agilidade', 1)">+</button>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="atributo">
+
+        <div class="atributo-info">
+
+            <h3>FORÇA</h3>
+
+            <p>
+                Poder físico, combate corporal e capacidade de carga.
+            </p>
+
+        </div>
+
+
+        <div class="controle">
+
+            <button onclick="alterarAtributo('forca', -1)">-</button>
+
+            <strong id="forca">1</strong>
+
+            <button onclick="alterarAtributo('forca', 1)">+</button>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="atributo">
+
+        <div class="atributo-info">
+
+            <h3>INTELECTO</h3>
+
+            <p>
+                Conhecimento, lógica, investigação e aprendizado.
+            </p>
+
+        </div>
+
+
+        <div class="controle">
+
+            <button onclick="alterarAtributo('intelecto', -1)">-</button>
+
+            <strong id="intelecto">1</strong>
+
+            <button onclick="alterarAtributo('intelecto', 1)">+</button>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="atributo">
+
+        <div class="atributo-info">
+
+            <h3>PRESENÇA</h3>
+
+            <p>
+                Carisma, determinação, influência e força de vontade.
+            </p>
+
+        </div>
+
+
+        <div class="controle">
+
+            <button onclick="alterarAtributo('presenca', -1)">-</button>
+
+            <strong id="presenca">1</strong>
+
+            <button onclick="alterarAtributo('presenca', 1)">+</button>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="atributo">
+
+        <div class="atributo-info">
+
+            <h3>VIGOR</h3>
+
+            <p>
+                Resistência, vitalidade, fôlego e sobrevivência.
+            </p>
+
+        </div>
+
+
+        <div class="controle">
+
+            <button onclick="alterarAtributo('vigor', -1)">-</button>
+
+            <strong id="vigor">1</strong>
+
+            <button onclick="alterarAtributo('vigor', 1)">+</button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="navegacao">
+
+    <button class="botao-secundario"
+            onclick="mudarEtapa(1)">
+
+        VOLTAR
+
+    </button>
+
+
+    <button class="botao-principal"
+            onclick="mudarEtapa(3)">
+
+        PRÓXIMO
+
+    </button>
+
+</div>
+
+
+</div>
+
+<!-- ================================================= -->
+
+<!-- ETAPA 3 - CLASSES -->
+
+<!-- ================================================= -->
+
+<div id="etapa3" class="etapa">
+
+
+<div class="titulo-etapa">
+
+    <h2>CLASSE</h2>
+
+    <p>
+        Escolha como seu personagem enfrenta os horrores do Japão Antigo.
+    </p>
+
+</div>
+
+
+<div class="categorias-classe">
+
+    <button class="categoria combatente"
+            onclick="mostrarCategoria('combatente')">
+
+        <h3>COMBATENTES</h3>
+
+        <p>
+            Guerreiros, soldados e defensores.
+        </p>
+
+    </button>
+
+
+    <button class="categoria especialista"
+            onclick="mostrarCategoria('especialista')">
+
+        <h3>ESPECIALISTAS</h3>
+
+        <p>
+            Conhecimento, técnica e inteligência.
+        </p>
+
+    </button>
+
+
+    <button class="categoria ocultista"
+            onclick="mostrarCategoria('ocultista')">
+
+        <h3>OCULTISTAS</h3>
+
+        <p>
+            Espíritos, rituais e forças proibidas.
+        </p>
+
+    </button>
+
+</div>
+
+
+<div id="listaClasses"
+     class="lista-classes">
+
+</div>
+
+
+<div id="detalhesClasse"
+     class="detalhes-classe">
+
+    <h3>ESCOLHA UMA CLASSE</h3>
+
+    <p>
+        Primeiro escolha uma das três categorias.
+    </p>
+
+</div>
+
+
+<div class="navegacao">
+
+    <button class="botao-secundario"
+            onclick="mudarEtapa(2)">
+
+        VOLTAR
+
+    </button>
+
+
+    <button class="botao-principal"
+            onclick="mudarEtapa(4)">
+
+        PRÓXIMO
+
+    </button>
+
+</div>
+
+
+</div>
+
+<!-- ================================================= -->
+
+<!-- ETAPA 4 - ORIGEM -->
+
+<!-- ================================================= -->
+
+<div id="etapa4" class="etapa">
+
+
+<div class="titulo-etapa">
+
+    <h2>ORIGEM</h2>
+
+    <p>
+        Quem você era antes de se tornar aquilo que é hoje?
+    </p>
+
+</div>
+
+
+<div id="listaOrigens"
+     class="origens">
+
+</div>
+
+
+<div id="detalhesOrigem"
+     class="detalhes-origem">
+
+    <h3>ESCOLHA UMA ORIGEM</h3>
+
+    <p>
+        Selecione uma das 30 origens para conhecer sua história,
+        perícias treinadas e habilidade exclusiva.
+    </p>
+
+</div>
+
+
+<p class="selecionado">
+
+    ORIGEM ESCOLHIDA:
+
+    <strong id="origemEscolhida">
+        NENHUMA
+    </strong>
+
+</p>
+
+
+<div class="navegacao">
+
+    <button type="button"
+            class="botao-secundario"
+            onclick="mudarEtapa(3)">
+
+        VOLTAR
+
+    </button>
+
+
+    <button type="button"
+            class="botao-principal"
+            onclick="mudarEtapa(5)">
+
+        PRÓXIMO
+
+    </button>
+
+</div>
+
+
+</div>
+
+<!-- ================================================= -->
+
+<!-- ETAPA 5 - CARACTERÍSTICAS -->
+
+<!-- ================================================= -->
+
+<div id="etapa5" class="etapa">
+
+<div class="titulo-etapa">
+
+    <h2>CARACTERÍSTICAS</h2>
+
+    <p>
+        As capacidades definidas por sua classe.
+    </p>
+
+</div>
+
+
+<div id="painelCaracteristicas"
+     class="painel-caracteristicas">
+
+</div>
+
+
+<div class="navegacao">
+
+    <button class="botao-secundario"
+            onclick="mudarEtapa(4)">
+
+        VOLTAR
+
+    </button>
+
+
+    <button class="botao-principal"
+            onclick="mudarEtapa(6)">
+
+        PRÓXIMO
+
+    </button>
+
+</div>
+
+
+</div>
+
+<!-- ================================================= -->
+
+<!-- ETAPA 6 - O PARANORMAL -->
+
+<!-- ================================================= -->
+
+<div id="etapa6" class="etapa">
+
+
+<div class="titulo-etapa">
+
+    <h2>O PARANORMAL</h2>
+
+    <p>
+        Algumas respostas nunca deveriam ser procuradas.
+    </p>
+
+</div>
+
+
+<div class="paranormal-area">
+
+    <h3 class="pergunta">
+
+        VOCÊ ACREDITA QUE ELE EXISTE?
+
+    </h3>
+
+
+    <div class="escolhas">
+
+        <button onclick="responderEle('SIM')">
+
+            SIM
+
+        </button>
+
+        <button onclick="responderEle('NÃO')">
+
+            NÃO
+
+        </button>
+
+        <button onclick="responderEle('EU NÃO SEI')">
+
+            EU NÃO SEI
+
+        </button>
+
+    </div>
+
+
+    <p id="respostaEle"
+       class="resposta-ele"></p>
+
+
+    <button class="botao-principal"
+            onclick="finalizarFicha()">
+
+        FINALIZAR PERSONAGEM
+
+    </button>
+
+</div>
+
+
+<div class="navegacao">
+
+    <button class="botao-secundario"
+            onclick="mudarEtapa(5)">
+
+        VOLTAR
+
+    </button>
+
+</div>
+
+
+</div>
+
+</section>
+
+</main>
+
+</section>
+
+<!-- ================================================= -->
+
+<!-- FICHA FINAL -->
+
+<!-- ================================================= -->
+
+<section id="fichaFinal"
+         class="tela">
+
+<div class="ficha">
+
+
+    <div class="ficha-header">
+
+        <p>"IMPÉRIO"</p>
+
+        <h1 id="fichaNome">
+
+            PERSONAGEM
+
+        </h1>
+
+        <span>
+
+            ELE SEMPRE SOUBE
+
+        </span>
+
+    </div>
+
+
+
+    <div class="ficha-grid">
+
+
+        <div class="ficha-box">
+
+            <h3>IDENTIDADE</h3>
+
+            <p><strong>Personagem:</strong>
+                <span id="fichaPersonagem"></span>
+            </p>
+
+            <p><strong>Jogador:</strong>
+                <span id="fichaJogador"></span>
+            </p>
+
+            <p><strong>Origem:</strong>
+                <span id="fichaOrigem"></span>
+            </p>
+
+        </div>
+
+
+
+        <div class="ficha-box">
+
+            <h3>CLASSE</h3>
+
+            <p><strong>Categoria:</strong>
+                <span id="fichaCategoria"></span>
+            </p>
+
+            <p><strong>Classe:</strong>
+                <span id="fichaClasse"></span>
+            </p>
+
+        </div>
+
+
+
+        <div class="ficha-box">
+
+            <h3>CARACTERÍSTICAS</h3>
+
+            <p>PV:
+                <span id="fichaPV"></span>
+            </p>
+
+            <p>PE:
+                <span id="fichaPE"></span>
+            </p>
+
+            <p>SAN:
+                <span id="fichaSAN"></span>
+            </p>
+
+        </div>
+
+
+
+        <div class="ficha-box">
+
+            <h3>ATRIBUTOS</h3>
+
+            <p>Agilidade:
+                <span id="fichaAgilidade"></span>
+            </p>
+
+            <p>Força:
+                <span id="fichaForca"></span>
+            </p>
+
+            <p>Intelecto:
+                <span id="fichaIntelecto"></span>
+            </p>
+
+            <p>Presença:
+                <span id="fichaPresenca"></span>
+            </p>
+
+            <p>Vigor:
+                <span id="fichaVigor"></span>
+            </p>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="ficha-historia ficha-origem">
+
+        <h3>ORIGEM</h3>
+
+        <h4 id="fichaOrigemTitulo"></h4>
+
+        <p id="fichaOrigemDescricao"></p>
+
+        <p>
+            <strong>Perícias treinadas:</strong>
+            <span id="fichaPericiasOrigem"></span>
+        </p>
+
+        <p id="fichaHabilidadeOrigem"></p>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>PROFICIÊNCIAS</h3>
+
+        <p id="fichaProficiencias"></p>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>HABILIDADES</h3>
+
+        <div id="fichaHabilidades"></div>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>APARÊNCIA</h3>
+
+        <p id="fichaAparencia"></p>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>PERSONALIDADE</h3>
+
+        <p id="fichaPersonalidade"></p>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>HISTÓRICO</h3>
+
+        <p id="fichaHistorico"></p>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>OBJETIVO</h3>
+
+        <p id="fichaObjetivo"></p>
+
+    </div>
+
+
+    <div class="acoes-exportar">
+
+        <button type="button"
+                class="botao-principal"
+                onclick="gerarPDF()">
+
+            ⬇ BAIXAR PDF
+
+        </button>
+
+        <button type="button"
+                class="botao-secundario"
+                onclick="gerarImagem()">
+
+            🖼 BAIXAR IMAGEM
+
+        </button>
+
+        <button type="button"
+                class="botao-secundario"
+                onclick="compartilharPersonagem()">
+
+            🔗 COMPARTILHAR FICHA
+
+        </button>
+
+        <button type="button"
+                class="botao-secundario"
+                onclick="compartilharSite()">
+
+            🌐 COMPARTILHAR SITE
+
+        </button>
+
+    </div>
+
+    <div class="acao-recomecar">
+
+        <button type="button"
+                class="botao-secundario"
+                onclick="voltarInicio()">
+
+            ↺ CRIAR OUTRO PERSONAGEM
+
+        </button>
+
+    </div>
+
+</div>
+
+
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="script.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,759 @@
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:wght@400;500;600&display=swap");
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --preto: #050505;
+    --preto-claro: #111111;
+    --vermelho: #750000;
+    --vermelho-claro: #c41212;
+    --dourado: #c7a85b;
+    --texto: #e5ddce;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: var(--preto);
+    color: var(--texto);
+    font-family: "Crimson Pro", serif;
+    min-height: 100vh;
+}
+
+/* FUNDO */
+
+.background {
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(
+            rgba(0,0,0,.75),
+            rgba(0,0,0,.96)
+        ),
+        url("https://images.unsplash.com/photo-1545569341-9eb8b30979d9?auto=format&fit=crop&w=1920&q=80");
+    background-size: cover;
+    background-position: center;
+    z-index: -1;
+}
+
+/* TELAS */
+
+.tela {
+    display: none;
+    min-height: 100vh;
+}
+
+.tela.ativa {
+    display: block;
+}
+
+#inicio.ativa {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+/* INÍCIO */
+
+.inicio-conteudo {
+    max-width: 900px;
+    padding: 50px 25px;
+}
+
+.simbolo {
+    font-size: 65px;
+    color: var(--vermelho-claro);
+}
+
+.inicio-conteudo h1 {
+    font-family: "Cinzel", serif;
+    font-size: clamp(55px, 10vw, 110px);
+    letter-spacing: 8px;
+    color: var(--dourado);
+}
+
+.subtitulo {
+    color: var(--vermelho-claro);
+    letter-spacing: 4px;
+}
+
+.linha {
+    width: 220px;
+    height: 2px;
+    background: var(--dourado);
+    margin: 35px auto;
+}
+
+.historia {
+    font-size: 22px;
+    margin: 15px 0;
+}
+
+.ele {
+    color: var(--vermelho-claro);
+    font-family: "Cinzel", serif;
+    font-size: 25px;
+    margin: 35px 0;
+}
+
+.observa {
+    color: var(--vermelho-claro);
+    letter-spacing: 3px;
+}
+
+/* BOTÕES */
+
+button {
+    cursor: pointer;
+    font-family: "Cinzel", serif;
+}
+
+.botao-principal,
+.botao-secundario {
+    padding: 15px 28px;
+    letter-spacing: 2px;
+    transition: .25s;
+}
+
+.botao-principal {
+    background: var(--vermelho);
+    color: white;
+    border: 1px solid var(--vermelho-claro);
+}
+
+.botao-principal:hover {
+    background: var(--vermelho-claro);
+    transform: translateY(-2px);
+}
+
+.botao-secundario {
+    background: #111;
+    color: white;
+    border: 1px solid #555;
+}
+
+/* HEADER */
+
+#criador header {
+    min-height: 85px;
+    background: rgba(5,5,5,.96);
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+}
+
+.logo {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 24px;
+}
+
+.progresso {
+    width: 280px;
+    text-align: right;
+}
+
+.barra-progresso {
+    width: 100%;
+    height: 6px;
+    background: #222;
+    margin-top: 8px;
+}
+
+#barraProgresso {
+    height: 100%;
+    width: 14%;
+    background: var(--vermelho-claro);
+    transition: .4s;
+}
+
+/* LAYOUT */
+
+main {
+    display: flex;
+    min-height: calc(100vh - 85px);
+}
+
+/* MENU */
+
+.menu-lateral {
+    width: 260px;
+    background: rgba(8,8,8,.95);
+    border-right: 1px solid #333;
+    padding-top: 25px;
+}
+
+.menu-item {
+    width: 100%;
+    padding: 18px 25px;
+    background: transparent;
+    color: #888;
+    border: none;
+    border-left: 3px solid transparent;
+    text-align: left;
+}
+
+.menu-item:hover {
+    background: #181818;
+    color: white;
+}
+
+.menu-item.ativo {
+    border-left-color: var(--vermelho-claro);
+    background: #181818;
+    color: var(--dourado);
+}
+
+.paranormal {
+    color: var(--vermelho-claro);
+}
+
+/* CONTEÚDO */
+
+.conteudo-criacao {
+    width: 100%;
+    max-width: 1200px;
+    padding: 60px;
+    margin: auto;
+}
+
+.etapa {
+    display: none;
+}
+
+.etapa.ativa {
+    display: block;
+}
+
+/* TÍTULOS */
+
+.titulo-etapa {
+    margin-bottom: 40px;
+}
+
+.titulo-etapa h2 {
+    font-family: "Cinzel", serif;
+    font-size: 32px;
+    color: var(--dourado);
+}
+
+.titulo-etapa p {
+    color: #aaa;
+    font-size: 19px;
+    margin-top: 10px;
+}
+
+/* FORMULÁRIO */
+
+.formulario {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
+}
+
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.campo.grande {
+    grid-column: 1 / -1;
+}
+
+.campo label {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 15px;
+    background: #111;
+    color: white;
+    border: 1px solid #444;
+    font-size: 17px;
+}
+
+textarea {
+    min-height: 150px;
+}
+
+/* ATRIBUTOS */
+
+.pontos-box,
+.limite-pericias {
+    text-align: center;
+    padding: 25px;
+    background: rgba(80,0,0,.25);
+    border: 1px solid #5c2525;
+    margin-bottom: 30px;
+}
+
+.pontos-box strong,
+.limite-pericias strong {
+    display: block;
+    font-size: 45px;
+    color: var(--vermelho-claro);
+}
+
+.atributos {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.atributo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px;
+    background: rgba(12,12,12,.92);
+    border: 1px solid #333;
+}
+
+.atributo-info h3 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+}
+
+.atributo-info p {
+    color: #aaa;
+}
+
+.controle {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.controle button {
+    width: 42px;
+    height: 42px;
+    background: #181818;
+    color: white;
+    border: 1px solid #555;
+}
+
+.controle strong {
+    color: var(--vermelho-claro);
+    font-size: 28px;
+}
+
+/* CATEGORIAS */
+
+.categorias-classe {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.categoria {
+    padding: 35px 20px;
+    background: rgba(12,12,12,.95);
+    color: white;
+    border: 1px solid #444;
+    transition: .25s;
+}
+
+.categoria:hover {
+    transform: translateY(-5px);
+    border-color: var(--dourado);
+}
+
+.categoria h3 {
+    color: var(--dourado);
+    margin: 15px 0;
+}
+
+.lista-classes {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.card-classe {
+    padding: 25px;
+    background: #101010;
+    color: white;
+    border: 1px solid #444;
+    text-align: left;
+}
+
+.card-classe:hover,
+.card-classe.selecionada {
+    border-color: var(--vermelho-claro);
+    background: rgba(100,0,0,.3);
+}
+
+.card-classe h3 {
+    color: var(--dourado);
+}
+
+.detalhes-classe {
+    margin-top: 35px;
+    padding: 35px;
+    background: rgba(10,10,10,.95);
+    border: 1px solid #57462b;
+}
+
+.detalhes-classe h2,
+.detalhes-classe h3 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    margin: 20px 0 10px;
+}
+
+.detalhes-classe p {
+    font-size: 18px;
+    line-height: 1.5;
+}
+
+.detalhes-classe li {
+    margin: 10px 0;
+}
+
+/* ORIGENS */
+
+.origens {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 20px;
+}
+
+.card-origem {
+    min-height: 150px;
+    padding: 25px;
+    background: rgba(12,12,12,.92);
+    color: white;
+    border: 1px solid #444;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    transition: transform .25s, border-color .25s, background .25s;
+}
+
+.card-origem:hover {
+    transform: translateY(-3px);
+}
+
+.card-origem h3 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 18px;
+    margin: 0;
+}
+
+.card-origem p {
+    color: #aaa;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.card-origem:hover,
+.card-origem.selecionada {
+    border-color: var(--vermelho-claro);
+    background: rgba(90,0,0,.3);
+}
+
+.card-origem.selecionada {
+    box-shadow: 0 0 0 1px var(--vermelho-claro), 0 0 22px rgba(196,18,18,.18);
+}
+
+.detalhes-origem {
+    margin-top: 35px;
+    padding: 35px;
+    background: rgba(10,10,10,.95);
+    border: 1px solid #57462b;
+}
+
+.detalhes-origem h2,
+.detalhes-origem h3,
+.detalhes-origem h4 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    margin: 0 0 15px;
+}
+
+.detalhes-origem h3 {
+    margin-top: 25px;
+}
+
+.detalhes-origem p {
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--texto);
+}
+
+.descricao-origem {
+    color: #d2c8b7 !important;
+}
+
+.selecionado {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.selecionado strong {
+    color: var(--vermelho-claro);
+}
+
+/* CARACTERÍSTICAS */
+
+.painel-caracteristicas {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+/* PARANORMAL */
+
+.paranormal-area {
+    text-align: center;
+    padding: 40px 0;
+}
+
+.pergunta {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    margin-bottom: 30px;
+}
+
+.escolhas {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.escolhas button {
+    padding: 15px 25px;
+    background: #111;
+    color: white;
+    border: 1px solid #555;
+}
+
+.escolhas button:hover {
+    background: var(--vermelho);
+}
+
+.resposta-ele {
+    min-height: 40px;
+    margin: 30px;
+    color: var(--vermelho-claro);
+}
+
+/* NAVEGAÇÃO */
+
+.navegacao {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 50px;
+}
+
+/* FICHA */
+
+#fichaFinal {
+    padding: 50px 20px;
+}
+
+.ficha {
+    max-width: 1200px;
+    margin: auto;
+    padding: 50px;
+    background: rgba(8,8,8,.97);
+    border: 1px solid #57462b;
+}
+
+.ficha-header {
+    text-align: center;
+    border-bottom: 1px solid #444;
+    padding-bottom: 30px;
+}
+
+.ficha-header p {
+    color: var(--dourado);
+}
+
+.ficha-header h1 {
+    font-family: "Cinzel", serif;
+    font-size: 45px;
+    margin: 15px;
+}
+
+.ficha-header span {
+    color: var(--vermelho-claro);
+}
+
+.ficha-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.ficha-box,
+.ficha-historia {
+    padding: 25px;
+    background: #101010;
+    border: 1px solid #333;
+}
+
+.ficha-box h3,
+.ficha-historia h3 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    margin-bottom: 20px;
+}
+
+.ficha-box p {
+    margin: 10px 0;
+}
+
+.ficha-historia {
+    margin-bottom: 25px;
+}
+
+.ficha-historia p {
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.ficha-origem h4 {
+    color: var(--vermelho-claro);
+    font-family: "Cinzel", serif;
+    margin-bottom: 15px;
+}
+
+/* BOTÕES DE EXPORTAÇÃO */
+
+.acoes-exportar {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 35px;
+    padding-top: 25px;
+    border-top: 1px solid #333;
+}
+
+.acoes-exportar button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+}
+
+/* AÇÃO DE RECOMEÇAR */
+
+.acao-recomecar {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 25px;
+    border-top: 1px solid #333;
+}
+
+.acao-recomecar button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    color: #aaa;
+    letter-spacing: 2px;
+}
+
+.acao-recomecar button:hover {
+    color: var(--dourado);
+    border-color: var(--dourado);
+}
+
+/* RESPONSIVO */
+
+@media (max-width: 1000px) {
+    .origens {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 800px) {
+    #criador header {
+        padding: 15px;
+    }
+
+    main {
+        display: block;
+    }
+
+    .menu-lateral {
+        width: 100%;
+        display: flex;
+        overflow-x: auto;
+        padding: 0;
+    }
+
+    .menu-item {
+        min-width: 150px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+    }
+
+    .menu-item.ativo {
+        border-bottom-color: var(--vermelho-claro);
+    }
+
+    .conteudo-criacao {
+        padding: 35px 20px;
+    }
+
+    .formulario,
+    .categorias-classe,
+    .lista-classes,
+    .origens,
+    .painel-caracteristicas,
+    .ficha-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .atributo {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+
+    .controle {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .ficha {
+        padding: 25px;
+    }
+
+    .detalhes-origem {
+        padding: 25px;
+    }
+
+    .acoes-exportar {
+        flex-direction: column;
+    }
+
+    .acoes-exportar button {
+        width: 100%;
+        justify-content: center;
+    }
+}
