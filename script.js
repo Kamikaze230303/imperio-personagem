@@ -78,7 +78,12 @@ function limitePericias() {
         return 0;
     }
 
-    return periciasBase[categoriaSelecionada] + atributos.intelecto;
+    const limiteMaximoGeral = 5;
+
+    return Math.min(
+        periciasBase[categoriaSelecionada] + atributos.intelecto,
+        limiteMaximoGeral
+    );
 }
 
 // Quantas perícias já treinadas usam um determinado atributo
@@ -192,7 +197,7 @@ function mostrarPericias() {
             <div class="pontos-box">
                 <p>PERÍCIAS TREINADAS</p>
                 <strong>${periciasSelecionadas.length} / ${limite}</strong>
-                <small>Limite da classe: ${periciasBase[categoriaSelecionada]} + Intelecto (${atributos.intelecto})</small>
+                <small>Limite da classe: ${periciasBase[categoriaSelecionada]} + Intelecto (${atributos.intelecto}) — teto máximo de 5</small>
             </div>
         `;
     }
