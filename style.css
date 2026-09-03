@@ -510,6 +510,211 @@ textarea {
     text-align: right;
 }
 
+/* ARMAS */
+
+.resumo-arma {
+    margin-bottom: 30px;
+}
+
+.resumo-arma .pontos-box small {
+    display: block;
+    color: #aaa;
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.grupo-armas {
+    margin-bottom: 35px;
+}
+
+.grupo-armas-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid #333;
+}
+
+.grupo-armas-header h3 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 20px;
+    letter-spacing: 1px;
+}
+
+.grupo-armas-header .grupo-contador {
+    color: var(--vermelho-claro);
+    font-family: "Cinzel", serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+}
+
+.grupo-armas-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.arma-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 22px;
+    background: rgba(12,12,12,.92);
+    border: 1px solid #444;
+    cursor: pointer;
+    transition: transform .25s, border-color .25s, background .25s;
+}
+
+.arma-item input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.arma-check-indicador {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 2px solid #555;
+    background: #111;
+    transition: .2s;
+}
+
+.arma-item:hover {
+    transform: translateY(-3px);
+    border-color: var(--dourado);
+}
+
+.arma-item:hover .arma-check-indicador {
+    border-color: var(--dourado);
+}
+
+.arma-item.selecionada {
+    border-color: var(--vermelho-claro);
+    background: rgba(90,0,0,.3);
+    box-shadow: 0 0 0 1px var(--vermelho-claro), 0 0 22px rgba(196,18,18,.18);
+}
+
+.arma-item.selecionada .arma-check-indicador {
+    border-color: var(--vermelho-claro);
+}
+
+.arma-item.selecionada .arma-check-indicador::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background: var(--vermelho-claro);
+}
+
+.arma-item.bloqueada {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.arma-item.bloqueada:hover {
+    transform: none;
+    border-color: #444;
+}
+
+.arma-nivel-badge {
+    align-self: flex-start;
+    font-family: "Cinzel", serif;
+    font-size: 10.5px;
+    letter-spacing: .5px;
+    color: white;
+    padding: 3px 9px;
+    background: #5a5a5a;
+}
+
+.arma-nivel-0 { background: #5a5a5a; }
+.arma-nivel-1 { background: #3a6b35; }
+.arma-nivel-2 { background: #8a6d1f; }
+.arma-nivel-3 { background: #a04a12; }
+.arma-nivel-4 { background: var(--vermelho); }
+
+.arma-topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding-right: 20px;
+}
+
+.arma-nome {
+    font-family: "Cinzel", serif;
+    color: var(--dourado);
+    font-size: 17px;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.arma-dano-badge {
+    flex-shrink: 0;
+    background: rgba(117,0,0,.35);
+    border: 1px solid var(--vermelho-claro);
+    color: var(--vermelho-claro);
+    font-family: "Cinzel", serif;
+    font-size: 13px;
+    padding: 4px 10px;
+    white-space: nowrap;
+}
+
+.arma-meta {
+    color: #888;
+    font-size: 12px;
+    letter-spacing: .5px;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.arma-specs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+    padding: 10px 0;
+    border-top: 1px solid #333;
+    border-bottom: 1px solid #333;
+}
+
+.arma-specs span {
+    color: #aaa;
+    font-size: 12px;
+}
+
+.arma-specs strong {
+    display: block;
+    color: #777;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-weight: normal;
+}
+
+.arma-especial {
+    color: var(--texto);
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.arma-motivo {
+    color: var(--vermelho-claro);
+    font-size: 12px;
+    letter-spacing: .5px;
+    margin: 0;
+    font-style: italic;
+}
+
 /* CATEGORIAS */
 
 .categorias-classe {

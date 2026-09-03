@@ -43,6 +43,8 @@ const listaDePericias = [
     { nome: "Crime", atributo: "agilidade" },
     { nome: "Diplomacia", atributo: "presenca" },
     { nome: "Enganação", atributo: "presenca" },
+    { nome: "Equitação", atributo: "agilidade" },
+    { nome: "Etiqueta", atributo: "presenca", somenteTreinada: true },
     { nome: "Fortitude", atributo: "vigor" },
     { nome: "Furtividade", atributo: "agilidade" },
     { nome: "Iniciativa", atributo: "agilidade" },
@@ -71,6 +73,179 @@ const abreviacaoAtributo = {
     presenca: "PRE",
     vigor: "VIG"
 };
+
+// ============================================================
+// ARMAS
+// ============================================================
+
+let armaSelecionada = null;
+let nivelPersonagem = 1;
+
+// Tabela de desbloqueio: Nível do personagem -> Categoria máxima de arma liberada
+function categoriaLiberada() {
+    if (nivelPersonagem >= 11) return 4;
+    if (nivelPersonagem >= 7) return 3;
+    if (nivelPersonagem >= 4) return 2;
+    if (nivelPersonagem >= 2) return 1;
+    return 0;
+}
+
+// Nível mínimo de personagem necessário para liberar uma categoria de arma (0-4)
+function nivelMinimoParaCategoria(categoria) {
+    const tabela = { 0: 1, 1: 2, 2: 4, 3: 7, 4: 11 };
+    return tabela[categoria];
+}
+
+function alterarNivelPersonagem() {
+    const campo = document.getElementById("nivelPersonagem");
+    if (!campo) return;
+
+    let valor = parseInt(campo.value, 10);
+    if (isNaN(valor)) valor = 1;
+    valor = Math.max(1, Math.min(20, valor));
+
+    campo.value = valor;
+    nivelPersonagem = valor;
+
+    const efeito = document.getElementById("nivelEfeito");
+    if (efeito) {
+        efeito.textContent = `Libera armas de Categoria ${categoriaLiberada()}`;
+    }
+
+    mostrarArmas();
+}
+
+const listaDeArmas = [
+    { nome: "Nodachi", categoria: "Haste", nivel: 3, proficiencia: "Marcial", dano: "1d12", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Pesado", tamanho: "Grande", espaco: 4, especial: "Exige as duas mãos; -5 em ambientes fechados." },
+    { nome: "Wakizashi Amaldiçoado", categoria: "Corte", nivel: 4, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Uma vez por cena, sussurra o nome de quem cairá em seguida; se a previsão se cumprir na mesma cena, você recebe +5 no próximo teste de Luta." },
+    { nome: "Tantō de Prata Bendita", categoria: "Corte", nivel: 0, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "+1d4 de dano contra entidades paranormais." },
+    { nome: "Nagamaki", categoria: "Haste", nivel: 2, proficiencia: "Marcial", dano: "1d10", pericia: "Luta", alcance: "Médio-Longo", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Alcance maior; atinge primeiro contra armas curtas." },
+    { nome: "Kusarigama", categoria: "Haste", nivel: 2, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Médio (com corrente)", maos: "Uma mão", peso: "Leve", tamanho: "Média", espaco: 2, especial: "Duas lâminas ligadas por corrente; pode desarmar o alvo." },
+    { nome: "Kodachi", categoria: "Corte", nivel: 1, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "+2 em testes de Iniciativa enquanto empunhada." },
+    { nome: "Chokuto Ancestral", categoria: "Corte", nivel: 2, proficiencia: "Marcial", dano: "1d8", pericia: "Luta", alcance: "Médio", maos: "Uma mão", peso: "Médio", tamanho: "Média", espaco: 2, especial: "Uma vez por combate, rerrola um dado de dano em 1." },
+    { nome: "Ofuda-tō", categoria: "Corte", nivel: 3, proficiencia: "Ritual", dano: "1d6", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "+1d6 de dano contra entidades paranormais." },
+    { nome: "Naginata de Templo", categoria: "Haste", nivel: 3, proficiencia: "Marcial", dano: "1d10", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Pode atingir dois alvos adjacentes em um só golpe." },
+    { nome: "Su Yari", categoria: "Haste", nivel: 0, proficiencia: "Simples", dano: "1d8", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Mantém inimigos à distância; facilita ataques de oportunidade." },
+    { nome: "Kamayari", categoria: "Haste", nivel: 1, proficiencia: "Marcial", dano: "1d8", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Pode agarrar e puxar o alvo para perto." },
+    { nome: "Sasumata", categoria: "Haste", nivel: 1, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Não causa dano; em vez disso, imobiliza o alvo." },
+    { nome: "Yumi de Guerra", categoria: "Distância", nivel: 2, proficiencia: "Distância", dano: "1d8", pericia: "Pontaria", alcance: "Longo (à distância)", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Alcance longo; exige espaço livre para o disparo." },
+    { nome: "Hankyu", categoria: "Distância", nivel: 0, proficiencia: "Distância", dano: "1d6", pericia: "Pontaria", alcance: "Médio (à distância)", maos: "Uma mão", peso: "Leve", tamanho: "Média", espaco: 2, especial: "Compacto; pode ser usado montado sem penalidade." },
+    { nome: "Fukiya", categoria: "Distância", nivel: 2, proficiencia: "Distância", dano: "1d4", pericia: "Pontaria", alcance: "Médio (à distância)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Dardos podem ser preparados com toxinas." },
+    { nome: "Shuriken Rituais", categoria: "Distância", nivel: 3, proficiencia: "Distância", dano: "1d4", pericia: "Pontaria", alcance: "Curto (arremesso)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "+5 de dano contra entidades paranormais." },
+    { nome: "Teppo", categoria: "Distância", nivel: 3, proficiencia: "Distância", dano: "1d10", pericia: "Pontaria", alcance: "Médio (à distância)", maos: "Duas mãos", peso: "Pesado", tamanho: "Grande", espaco: 4, especial: "Recarga lenta: dispara uma vez a cada duas rodadas." },
+    { nome: "Kunai", categoria: "Distância", nivel: 1, proficiencia: "Simples", dano: "1d4", pericia: "Pontaria", alcance: "Curto (arremesso)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Também serve como ferramenta de escalada." },
+    { nome: "Kanabo", categoria: "Impacto", nivel: 3, proficiencia: "Marcial", dano: "1d12", pericia: "Luta", alcance: "Médio", maos: "Duas mãos", peso: "Pesado", tamanho: "Grande", espaco: 4, especial: "Ignora parte da proteção de armaduras leves." },
+    { nome: "Jitte", categoria: "Impacto", nivel: 1, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode ser usada para desarmar o oponente." },
+    { nome: "Tessen", categoria: "Impacto", nivel: 2, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Discreta; passa despercebida em ambientes formais." },
+    { nome: "Kusari-fundo", categoria: "Distância", nivel: 4, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Médio (com corrente)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode enrolar e imobilizar um membro do alvo, mesmo a curta distância." },
+    { nome: "Ancinho de Camponês", categoria: "Impacto", nivel: 0, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Médio", maos: "Duas mãos", peso: "Médio", tamanho: "Média", espaco: 2, especial: "Arma improvisada; fácil de conseguir em qualquer vila." },
+    { nome: "Nunchako", categoria: "Impacto", nivel: 2, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode ser usado para bloquear ataques corpo a corpo com facilidade." },
+    { nome: "Sino de Prata Amaldiçoado", categoria: "Impacto", nivel: 3, proficiencia: "Ritual", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "O som do impacto perturba espíritos próximos." },
+    { nome: "Corrente de Selamento", categoria: "Impacto", nivel: 4, proficiencia: "Ritual", dano: "1d6", pericia: "Luta", alcance: "Médio (com corrente)", maos: "Uma mão", peso: "Leve", tamanho: "Média", espaco: 2, especial: "Pode prender uma entidade em vez de causar dano." },
+    { nome: "Espelho de Bronze Afiado", categoria: "Corte", nivel: 3, proficiencia: "Ritual", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Uma vez por cena, reflete um efeito paranormal simples." },
+    { nome: "Bastão Xamânico com Ossos", categoria: "Haste", nivel: 4, proficiencia: "Ritual", dano: "1d6", pericia: "Luta", alcance: "Médio", maos: "Uma ou duas mãos", peso: "Médio", tamanho: "Média", espaco: 2, especial: "Também serve como foco para rituais xamânicos, concedendo +3 em testes de Ocultismo enquanto empunhado." },
+    { nome: "Adaga de Osso Ancestral", categoria: "Corte", nivel: 2, proficiencia: "Ritual", dano: "1d6", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Gelada ao toque; incomoda quem a segura por muito tempo." },
+    { nome: "Sino-Faca Yamabushi", categoria: "Corte", nivel: 1, proficiencia: "Ritual", dano: "1d8", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "O guizo embutido dá vantagem em Intimidação após acertar." }
+];
+
+function selecionarArma(nome) {
+    const arma = listaDeArmas.find(a => a.nome === nome);
+    if (!arma) return;
+
+    if (arma.nivel > categoriaLiberada()) {
+        alert(
+            `Essa arma exige Categoria ${arma.nivel}, liberada a partir do Nível ${nivelMinimoParaCategoria(arma.nivel)}. ` +
+            `Seu personagem está no Nível ${nivelPersonagem}.`
+        );
+        return;
+    }
+
+    armaSelecionada = arma;
+    mostrarArmas();
+}
+
+function mostrarArmas() {
+    const resumo = document.getElementById("resumoArma");
+    const lista = document.getElementById("listaArmas");
+    if (!lista) return;
+
+    if (resumo) {
+        resumo.innerHTML = armaSelecionada
+            ? `
+                <div class="pontos-box">
+                    <p>ARMA EQUIPADA</p>
+                    <strong>${armaSelecionada.nome}</strong>
+                    <small>${armaSelecionada.categoria} · dano ${armaSelecionada.dano} · teste de ${armaSelecionada.pericia} · Categoria ${armaSelecionada.nivel}</small>
+                </div>
+            `
+            : `
+                <div class="pontos-box">
+                    <p>NÍVEL DO PERSONAGEM</p>
+                    <strong>${nivelPersonagem}</strong>
+                    <small>Categorias de arma liberadas: 0 até ${categoriaLiberada()}</small>
+                </div>
+            `;
+    }
+
+    const categorias = ["Corte", "Haste", "Distância", "Impacto"];
+
+    lista.innerHTML = categorias.map(categoria => {
+        const armasDaCategoria = listaDeArmas.filter(arma => arma.categoria === categoria);
+        if (armasDaCategoria.length === 0) return "";
+
+        const itensHTML = armasDaCategoria.map(arma => {
+            const selecionada = armaSelecionada && armaSelecionada.nome === arma.nome;
+            const bloqueada = arma.nivel > categoriaLiberada();
+
+            return `
+                <label class="arma-item ${selecionada ? "selecionada" : ""} ${bloqueada ? "bloqueada" : ""}">
+
+                    <input type="radio"
+                           name="armaPrincipal"
+                           ${selecionada ? "checked" : ""}
+                           ${bloqueada ? "disabled" : ""}
+                           onchange="selecionarArma('${arma.nome}')">
+
+                    <span class="arma-check-indicador"></span>
+
+                    <span class="arma-nivel-badge arma-nivel-${arma.nivel}">CATEGORIA ${arma.nivel}</span>
+
+                    <div class="arma-topo">
+                        <h4 class="arma-nome">${arma.nome}</h4>
+                        <span class="arma-dano-badge">${arma.dano}</span>
+                    </div>
+
+                    <div class="arma-specs">
+                        <span><strong>Prof.</strong> ${arma.proficiencia}</span>
+                        <span><strong>Perícia</strong> ${arma.pericia}</span>
+                        <span><strong>Alcance</strong> ${arma.alcance}</span>
+                        <span><strong>Mãos</strong> ${arma.maos}</span>
+                        <span><strong>Peso</strong> ${arma.peso}</span>
+                        <span><strong>Tamanho</strong> ${arma.tamanho}</span>
+                        <span><strong>Espaço</strong> ${arma.espaco} slot${arma.espaco === 1 ? "" : "s"}</span>
+                    </div>
+
+                    <p class="arma-especial">${arma.especial}</p>
+
+                    ${bloqueada ? `<p class="arma-motivo">Requer Nível ${nivelMinimoParaCategoria(arma.nivel)}+</p>` : ""}
+
+                </label>
+            `;
+        }).join("");
+
+        return `
+            <div class="grupo-armas">
+                <div class="grupo-armas-header">
+                    <h3>${categoria}</h3>
+                    <span class="grupo-contador">${armasDaCategoria.length} arma${armasDaCategoria.length === 1 ? "" : "s"}</span>
+                </div>
+                <div class="grupo-armas-lista">
+                    ${itensHTML}
+                </div>
+            </div>
+        `;
+    }).join("");
+}
 
 // Limite total de perícias treinadas, de acordo com a classe escolhida
 function limitePericias() {
@@ -388,12 +563,12 @@ const origens = [
         }
     },
     {
-        nome: "Espião",
-        descricao: "Você viveu nas sombras de assuntos que não deveriam existir, coletando segredos, observando pessoas importantes e desaparecendo antes que alguém notasse. Confiança é um luxo que você aprendeu a nunca oferecer por completo.",
-        pericias: ["Furtividade", "Investigação"],
+        nome: "Contrabandista",
+        descricao: "Você aprendeu a mover mercadorias — e às vezes pessoas — por rotas que os postos de fiscalização nunca encontram. Cresceu decorando atalhos, subornando os guardas certos e sabendo exatamente quando desaparecer antes que perguntas incômodas fossem feitas.",
+        pericias: ["Furtividade", "Enganação"],
         habilidade: {
-            nome: "Informante",
-            descricao: "Sua antiga rede de contatos ainda lhe deve favores. Uma vez por missão, você pode obter uma informação útil sobre uma pessoa ou local, puxando um fio da teia de segredos que ajudou a construir."
+            nome: "Rota Alternativa",
+            descricao: "Anos evitando postos de fiscalização deixaram você com um mapa mental de caminhos alternativos. Uma vez por sessão, você pode encontrar uma passagem discreta para atravessar uma área vigiada sem ser notado."
         }
     },
     {
@@ -879,11 +1054,69 @@ const classes = {
             ]
         },
         {
-            nome: "Espião", foco: "Enganação e investigação.",
-            descricao: "O Espião constrói identidades falsas com a mesma facilidade que a maioria das pessoas conta a verdade. Vive entre segredos, sabendo exatamente quais perguntas fazer e quais respostas nunca revelar, mesmo sob pressão intensa. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Enganação e Investigação, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Ryo Shibata, Hiroshi Yagami e Haru Shibata.",
+            nome: "Rastreador", foco: "Rastreamento e orientação.",
+            descricao: "O Rastreador lê o terreno como um livro aberto, reconhecendo pegadas, cheiros e sinais que escapam a olhos destreinados. Contratado por senhores feudais e viajantes para localizar fugitivos, animais perigosos ou caminhos esquecidos, ele raramente perde uma trilha — mesmo quando ela leva a lugares que preferiria não encontrar. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Sobrevivência e Percepção, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Daigo Amano, Nao Kagemori e Emi Toyotomi Jr.",
             pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
-            proficiencias: "Armas simples e proteções leves que passam despercebidas.",
-            habilidades: ["Eclético", "Perito", "Rede de Informações", "Identidade Falsa"],
+            proficiencias: "Armas simples e proteções leves que não atrapalham o deslocamento.",
+            habilidades: ["Eclético", "Perito", "Faro para Trilhas", "Instinto de Rastreador"],
+            progressao: [
+                { nex: 5, habilidade: "Eclético" },
+                { nex: 10, habilidade: "Perito" },
+                { nex: 15, habilidade: "Poder de Especialista" },
+                { nex: 20, habilidade: "Aumento de Atributo" },
+                { nex: 25, habilidade: "Versatilidade (1 PE, +5 em perícia treinada)" },
+                { nex: 30, habilidade: "Poder de Especialista" },
+                { nex: 35, habilidade: "Grau de Perícia" },
+                { nex: 40, habilidade: "Habilidade de Trilha" },
+                { nex: 45, habilidade: "Poder de Especialista" },
+                { nex: 50, habilidade: "Aumento de Atributo, Versatilidade" },
+                { nex: 55, habilidade: "Versatilidade (2 PE, +10 em perícia treinada)" },
+                { nex: 60, habilidade: "Poder de Especialista" },
+                { nex: 65, habilidade: "Habilidade de Trilha" },
+                { nex: 70, habilidade: "Grau de Perícia" },
+                { nex: 75, habilidade: "Poder de Especialista" },
+                { nex: 80, habilidade: "Aumento de Atributo" },
+                { nex: 85, habilidade: "Versatilidade (3 PE, +15 em perícia treinada)" },
+                { nex: 90, habilidade: "Poder de Especialista" },
+                { nex: 95, habilidade: "Aumento de Atributo" },
+                { nex: 99, habilidade: "Habilidade de Trilha" }
+            ]
+        },
+        {
+            nome: "Cartógrafo", foco: "Mapas, exploração e navegação.",
+            descricao: "Enquanto guerreiros temem o desconhecido, o Cartógrafo o documenta. Percorreu regiões inóspitas registrando cada rio, vila e caminho, e aprendeu que um mapa preciso vale tanto quanto um exército — principalmente quando esse mapa marca lugares que ninguém mais ousou catalogar. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Investigação e Equitação, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Ichiro Mizushima, Sakura Arakawa e Goro Kuronuma.",
+            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 17, sanNex: 4,
+            proficiencias: "Armas simples e proteções leves, priorizando liberdade para carregar instrumentos de medição.",
+            habilidades: ["Eclético", "Perito", "Leitura de Terreno", "Rota Conhecida"],
+            progressao: [
+                { nex: 5, habilidade: "Eclético" },
+                { nex: 10, habilidade: "Perito" },
+                { nex: 15, habilidade: "Poder de Especialista" },
+                { nex: 20, habilidade: "Aumento de Atributo" },
+                { nex: 25, habilidade: "Versatilidade (1 PE, +5 em perícia treinada)" },
+                { nex: 30, habilidade: "Poder de Especialista" },
+                { nex: 35, habilidade: "Grau de Perícia" },
+                { nex: 40, habilidade: "Habilidade de Trilha" },
+                { nex: 45, habilidade: "Poder de Especialista" },
+                { nex: 50, habilidade: "Aumento de Atributo, Versatilidade" },
+                { nex: 55, habilidade: "Versatilidade (2 PE, +10 em perícia treinada)" },
+                { nex: 60, habilidade: "Poder de Especialista" },
+                { nex: 65, habilidade: "Habilidade de Trilha" },
+                { nex: 70, habilidade: "Grau de Perícia" },
+                { nex: 75, habilidade: "Poder de Especialista" },
+                { nex: 80, habilidade: "Aumento de Atributo" },
+                { nex: 85, habilidade: "Versatilidade (3 PE, +15 em perícia treinada)" },
+                { nex: 90, habilidade: "Poder de Especialista" },
+                { nex: 95, habilidade: "Aumento de Atributo" },
+                { nex: 99, habilidade: "Habilidade de Trilha" }
+            ]
+        },
+        {
+            nome: "Historiador", foco: "Memória viva de tradições e histórias.",
+            descricao: "Guardião de histórias que não estão escritas em lugar nenhum, o Historiador viaja recolhendo lendas, canções e relatos transmitidos de geração em geração. Seu conhecimento oral preserva verdades que os registros oficiais convenientemente esqueceram — incluindo avisos antigos sobre o que ronda a escuridão. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Atualidades e Diplomacia, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Toshi Ryusaki, Mei Onodera e Jiro Hazuki.",
+            pv: 16, pvNex: 3, pe: 4, peNex: 3, san: 17, sanNex: 4,
+            proficiencias: "Armas simples e proteções leves.",
+            habilidades: ["Eclético", "Perito", "Memória Oral", "Lenda Viva"],
             progressao: [
                 { nex: 5, habilidade: "Eclético" },
                 { nex: 10, habilidade: "Perito" },
@@ -1314,6 +1547,64 @@ const classes = {
                 { nex: 95, habilidade: "Aumento de Atributo" },
                 { nex: 99, habilidade: "Habilidade de Trilha" }
             ]
+        },
+        {
+            nome: "Curandeiro Espiritual", foco: "Cura através de rituais e energia espiritual.",
+            descricao: "Onde a medicina comum falha, o Curandeiro Espiritual recorre a cerimônias antigas para tratar males que não têm origem no corpo. Aprendeu que algumas feridas sangram alma, não sangue, e que curá-las exige tanto conhecimento ritual quanto compaixão. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Medicina e Religião, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Kenji Shirasu, Aiko Kanzaki e Isamu Hazuki.",
+            pv: 15, pvNex: 3, pe: 5, peNex: 4, san: 17, sanNex: 4,
+            proficiencias: "Armas simples e instrumentos rituais associados a cerimônias de cura.",
+            habilidades: ["Toque Curativo", "Purificação do Espírito", "Ritual de Restauração", "Vínculo Vital"],
+            progressao: [
+                { nex: 5, habilidade: "Ritual Menor (2 PE)" },
+                { nex: 10, habilidade: "Afinidade Paranormal" },
+                { nex: 15, habilidade: "Poder de Ocultista" },
+                { nex: 20, habilidade: "Aumento de Atributo" },
+                { nex: 25, habilidade: "Ritual Menor (3 PE)" },
+                { nex: 30, habilidade: "Poder de Ocultista" },
+                { nex: 35, habilidade: "Grau de Afinidade" },
+                { nex: 40, habilidade: "Habilidade de Trilha" },
+                { nex: 45, habilidade: "Poder de Ocultista" },
+                { nex: 50, habilidade: "Aumento de Atributo, Versatilidade" },
+                { nex: 55, habilidade: "Ritual Menor (4 PE)" },
+                { nex: 60, habilidade: "Poder de Ocultista" },
+                { nex: 65, habilidade: "Habilidade de Trilha" },
+                { nex: 70, habilidade: "Grau de Afinidade" },
+                { nex: 75, habilidade: "Poder de Ocultista" },
+                { nex: 80, habilidade: "Aumento de Atributo" },
+                { nex: 85, habilidade: "Ritual Menor (5 PE)" },
+                { nex: 90, habilidade: "Poder de Ocultista" },
+                { nex: 95, habilidade: "Aumento de Atributo" },
+                { nex: 99, habilidade: "Habilidade de Trilha" }
+            ]
+        },
+        {
+            nome: "Quebrador de Maldições", foco: "Identificação e remoção de maldições.",
+            descricao: "Especialista em reconhecer os sinais sutis de uma maldição — um azar persistente demais, uma doença que não responde a tratamento, um objeto que traz desgraça a quem o possui — o Quebrador de Maldições dedica a vida a desfazer amarras que a maioria nem percebe existir. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Intuição, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Ren Kagemori, Yui Tsukino e Akira Mizushima.",
+            pv: 15, pvNex: 3, pe: 6, peNex: 4, san: 15, sanNex: 3,
+            proficiencias: "Armas simples e instrumentos rituais usados para identificar e romper maldições.",
+            habilidades: ["Olhar Amaldiçoado", "Desfazer o Nó", "Rito de Quebra", "Última Maldição"],
+            progressao: [
+                { nex: 5, habilidade: "Ritual Menor (2 PE)" },
+                { nex: 10, habilidade: "Afinidade Paranormal" },
+                { nex: 15, habilidade: "Poder de Ocultista" },
+                { nex: 20, habilidade: "Aumento de Atributo" },
+                { nex: 25, habilidade: "Ritual Menor (3 PE)" },
+                { nex: 30, habilidade: "Poder de Ocultista" },
+                { nex: 35, habilidade: "Grau de Afinidade" },
+                { nex: 40, habilidade: "Habilidade de Trilha" },
+                { nex: 45, habilidade: "Poder de Ocultista" },
+                { nex: 50, habilidade: "Aumento de Atributo, Versatilidade" },
+                { nex: 55, habilidade: "Ritual Menor (4 PE)" },
+                { nex: 60, habilidade: "Poder de Ocultista" },
+                { nex: 65, habilidade: "Habilidade de Trilha" },
+                { nex: 70, habilidade: "Grau de Afinidade" },
+                { nex: 75, habilidade: "Poder de Ocultista" },
+                { nex: 80, habilidade: "Aumento de Atributo" },
+                { nex: 85, habilidade: "Ritual Menor (5 PE)" },
+                { nex: 90, habilidade: "Poder de Ocultista" },
+                { nex: 95, habilidade: "Aumento de Atributo" },
+                { nex: 99, habilidade: "Habilidade de Trilha" }
+            ]
         }
     ]
 };
@@ -1326,7 +1617,7 @@ function atualizarProgresso() {
     const barra = document.getElementById("barraProgresso");
     const texto = document.getElementById("textoProgresso");
 
-    const totalEtapas = 7;
+    const totalEtapas = 8;
 
     if (barra) {
         barra.style.width = ((etapaAtual / totalEtapas) * 100) + "%";
@@ -1789,6 +2080,7 @@ function obterPersonagem() {
     return {
         personagem: document.getElementById("personagem")?.value || "Sem nome",
         jogador: document.getElementById("jogador")?.value || "Não informado",
+        nivel: nivelPersonagem,
         aparencia: document.getElementById("aparencia")?.value || "Não informado",
         personalidade: document.getElementById("personalidade")?.value || "Não informado",
         historico: document.getElementById("historico")?.value || "Não informado",
@@ -1821,6 +2113,10 @@ function obterPersonagem() {
             : 0,
 
         pericias: textoPericias(),
+
+        arma: armaSelecionada
+            ? `${armaSelecionada.nome} — Categoria ${armaSelecionada.nivel} · ${armaSelecionada.categoria} · ${armaSelecionada.proficiencia} · dano ${armaSelecionada.dano} · teste de ${armaSelecionada.pericia} · alcance ${armaSelecionada.alcance} · ${armaSelecionada.maos} · peso ${armaSelecionada.peso} · tamanho ${armaSelecionada.tamanho} · ${armaSelecionada.espaco} slot${armaSelecionada.espaco === 1 ? "" : "s"} — ${armaSelecionada.especial}`
+            : "Nenhuma arma escolhida.",
 
         respostaParanormal:
             respostaEle?.dataset.resposta || "Não respondido",
@@ -1866,6 +2162,7 @@ function preencherFicha(personagem) {
         fichaNome: personagem.personagem,
         fichaPersonagem: personagem.personagem,
         fichaJogador: personagem.jogador,
+        fichaNivel: personagem.nivel,
         fichaOrigem: personagem.origem,
         fichaCategoria: personagem.categoria.toUpperCase(),
         fichaClasse: personagem.classe,
@@ -1873,6 +2170,7 @@ function preencherFicha(personagem) {
         fichaPE: personagem.pe,
         fichaSAN: personagem.san,
         fichaPericias: personagem.pericias,
+        fichaArma: personagem.arma,
         fichaAgilidade: personagem.atributos.agilidade,
         fichaForca: personagem.atributos.forca,
         fichaIntelecto: personagem.atributos.intelecto,
@@ -2005,6 +2303,7 @@ function gerarPDF() {
 
     escrever("Personagem", personagem.personagem);
     escrever("Jogador", personagem.jogador);
+    escrever("Nível", personagem.nivel);
     escrever("Origem", personagem.origem);
 
     titulo("CLASSE");
@@ -2028,6 +2327,9 @@ function gerarPDF() {
 
     titulo("PERÍCIAS");
     escrever("", personagem.pericias);
+
+    titulo("ARMA PRINCIPAL");
+    escrever("", personagem.arma);
 
     titulo("APARÊNCIA");
     escrever("", personagem.aparencia);
@@ -2125,6 +2427,7 @@ async function compartilharPersonagem() {
 
 Personagem: ${personagem.personagem}
 Jogador: ${personagem.jogador}
+Nível: ${personagem.nivel}
 
 Classe: ${personagem.classe}
 Origem: ${personagem.origem}
@@ -2140,6 +2443,8 @@ Presença: ${personagem.atributos.presenca}
 Vigor: ${personagem.atributos.vigor}
 
 Perícias: ${personagem.pericias}
+
+Arma: ${personagem.arma}
 
 "ELE SEMPRE SOUBE."`;
 
@@ -2255,7 +2560,7 @@ function criarPersonagem() {
 }
 
 function mudarEtapa(novaEtapa) {
-    if (novaEtapa < 1 || novaEtapa > 7) return;
+    if (novaEtapa < 1 || novaEtapa > 8) return;
 
     document.querySelectorAll(".etapa").forEach(etapa => {
         etapa.classList.remove("ativa");
@@ -2279,6 +2584,8 @@ function mudarEtapa(novaEtapa) {
         mostrarPericias();
     } else if (novaEtapa === 6) {
         atualizarCaracteristicas();
+    } else if (novaEtapa === 7) {
+        mostrarArmas();
     }
 
     window.scrollTo({

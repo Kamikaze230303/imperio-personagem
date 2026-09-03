@@ -178,10 +178,19 @@
 
 
 <button type="button"
-        class="menu-item paranormal"
+        class="menu-item"
         onclick="mudarEtapa(7)">
 
-    07 - O PARANORMAL
+    07 - EQUIPAMENTO
+
+</button>
+
+
+<button type="button"
+        class="menu-item paranormal"
+        onclick="mudarEtapa(8)">
+
+    08 - O PARANORMAL
 
 </button>
 
@@ -220,6 +229,17 @@
         <input type="text"
                id="jogador"
                placeholder="Nome do jogador">
+    </div>
+
+    <div class="campo">
+        <label>NÍVEL DO PERSONAGEM</label>
+        <input type="number"
+               id="nivelPersonagem"
+               min="1"
+               max="20"
+               value="1"
+               oninput="alterarNivelPersonagem()">
+        <span id="nivelEfeito" class="atributo-efeito">Libera armas de Categoria 0</span>
     </div>
 
     <div class="campo grande">
@@ -740,11 +760,58 @@
 
 <!-- ================================================= -->
 
-<!-- ETAPA 7 - O PARANORMAL -->
+<!-- ETAPA 7 - EQUIPAMENTO -->
 
 <!-- ================================================= -->
 
 <div id="etapa7" class="etapa">
+
+<div class="titulo-etapa">
+
+    <h2>EQUIPAMENTO</h2>
+
+    <p>
+        Escolha a arma principal do seu personagem.
+    </p>
+
+</div>
+
+
+<div id="resumoArma" class="resumo-arma"></div>
+
+
+<div id="listaArmas" class="lista-armas"></div>
+
+
+<div class="navegacao">
+
+    <button class="botao-secundario"
+            onclick="mudarEtapa(6)">
+
+        VOLTAR
+
+    </button>
+
+
+    <button class="botao-principal"
+            onclick="mudarEtapa(8)">
+
+        PRÓXIMO
+
+    </button>
+
+</div>
+
+
+</div>
+
+<!-- ================================================= -->
+
+<!-- ETAPA 8 - O PARANORMAL -->
+
+<!-- ================================================= -->
+
+<div id="etapa8" class="etapa">
 
 
 <div class="titulo-etapa">
@@ -793,23 +860,23 @@
     <p id="respostaEle"
        class="resposta-ele"></p>
 
-
-    <button class="botao-principal"
-            onclick="finalizarFicha()">
-
-        FINALIZAR PERSONAGEM
-
-    </button>
-
 </div>
 
 
 <div class="navegacao">
 
     <button class="botao-secundario"
-            onclick="mudarEtapa(6)">
+            onclick="mudarEtapa(7)">
 
         VOLTAR
+
+    </button>
+
+
+    <button class="botao-principal"
+            onclick="finalizarFicha()">
+
+        FINALIZAR PERSONAGEM
 
     </button>
 
@@ -869,6 +936,10 @@
 
             <p><strong>Jogador:</strong>
                 <span id="fichaJogador"></span>
+            </p>
+
+            <p><strong>Nível:</strong>
+                <span id="fichaNivel"></span>
             </p>
 
             <p><strong>Origem:</strong>
@@ -977,6 +1048,15 @@
         <h3>PERÍCIAS TREINADAS</h3>
 
         <p id="fichaPericias"></p>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>ARMA PRINCIPAL</h3>
+
+        <p id="fichaArma"></p>
 
     </div>
 
