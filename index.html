@@ -771,7 +771,8 @@
     <h2>EQUIPAMENTO</h2>
 
     <p>
-        Escolha a arma principal do seu personagem.
+        Escolha as armas que seu personagem vai carregar. O limite de armas é igual
+        à sua Força, até no máximo 5. A primeira arma escolhida se torna a principal.
     </p>
 
 </div>
@@ -903,21 +904,21 @@
 <div class="ficha">
 
 
+    <div class="ficha-topo">
+        <div class="ficha-topo-emblema">⚜</div>
+        <h1>IMPÉRIO</h1>
+    </div>
+
+
     <div class="ficha-header">
 
-        <p>"IMPÉRIO"</p>
+        <p>ELE SEMPRE SOUBE</p>
 
         <h1 id="fichaNome">
 
             PERSONAGEM
 
         </h1>
-
-        <span>
-
-            ELE SEMPRE SOUBE
-
-        </span>
 
     </div>
 
@@ -964,56 +965,7 @@
 
         </div>
 
-
-
-        <div class="ficha-box">
-
-            <h3>CARACTERÍSTICAS</h3>
-
-            <p>PV:
-                <span id="fichaPV"></span>
-            </p>
-
-            <p>PE:
-                <span id="fichaPE"></span>
-            </p>
-
-            <p>SAN:
-                <span id="fichaSAN"></span>
-            </p>
-
-        </div>
-
-
-
-        <div class="ficha-box">
-
-            <h3>ATRIBUTOS</h3>
-
-            <p>Agilidade:
-                <span id="fichaAgilidade"></span>
-            </p>
-
-            <p>Força:
-                <span id="fichaForca"></span>
-            </p>
-
-            <p>Intelecto:
-                <span id="fichaIntelecto"></span>
-            </p>
-
-            <p>Presença:
-                <span id="fichaPresenca"></span>
-            </p>
-
-            <p>Vigor:
-                <span id="fichaVigor"></span>
-            </p>
-
-        </div>
-
     </div>
-
 
 
     <div class="ficha-historia ficha-origem">
@@ -1034,38 +986,252 @@
     </div>
 
 
-    <div class="ficha-historia">
+    <div class="ficha-corpo">
 
-        <h3>PROFICIÊNCIAS</h3>
+        <div class="ficha-coluna-esq">
 
-        <p id="fichaProficiencias"></p>
+            <div class="ficha-historia">
 
-    </div>
+                <h3>PROFICIÊNCIAS</h3>
 
+                <p id="fichaProficiencias"></p>
 
-    <div class="ficha-historia">
-
-        <h3>PERÍCIAS TREINADAS</h3>
-
-        <p id="fichaPericias"></p>
-
-    </div>
+            </div>
 
 
-    <div class="ficha-historia">
+            <div class="ficha-historia">
 
-        <h3>ARMA PRINCIPAL</h3>
+                <h3>PERÍCIAS TREINADAS</h3>
 
-        <p id="fichaArma"></p>
+                <p id="fichaPericias"></p>
 
-    </div>
+            </div>
 
 
-    <div class="ficha-historia">
+            <div class="ficha-historia">
 
-        <h3>HABILIDADES</h3>
+                <h3>ARMA PRINCIPAL</h3>
 
-        <div id="fichaHabilidades"></div>
+                <div id="fichaArmaDetalhe"></div>
+
+            </div>
+
+
+            <div class="ficha-historia">
+
+                <h3>EQUIPAMENTO</h3>
+
+                <ul id="fichaEquipamento"></ul>
+
+            </div>
+
+
+            <div class="ficha-historia">
+
+                <h3>HABILIDADES &amp; RITUAIS</h3>
+
+                <table class="tabela-habilidades">
+                    <thead>
+                        <tr>
+                            <th>Habilidade</th>
+                            <th>NEX que libera</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fichaHabilidadesTabela"></tbody>
+                </table>
+
+            </div>
+
+
+            <div class="ficha-nex-progresso">
+
+                <div class="ficha-nex-titulo">NEX — PROGRESSO TOTAL</div>
+
+                <div class="checkbox-linha">
+                    <label><input type="checkbox" disabled> 5%</label>
+                    <label><input type="checkbox" disabled> 10%</label>
+                    <label><input type="checkbox" disabled> 15%</label>
+                    <label><input type="checkbox" disabled> 20%</label>
+                    <label><input type="checkbox" disabled> 25%</label>
+                    <label><input type="checkbox" disabled> 30%</label>
+                    <label><input type="checkbox" disabled> 35%</label>
+                    <label><input type="checkbox" disabled> 40%</label>
+                    <label><input type="checkbox" disabled> 45%</label>
+                    <label><input type="checkbox" disabled> 50%</label>
+                    <label><input type="checkbox" disabled> 55%</label>
+                    <label><input type="checkbox" disabled> 60%</label>
+                    <label><input type="checkbox" disabled> 65%</label>
+                    <label><input type="checkbox" disabled> 70%</label>
+                    <label><input type="checkbox" disabled> 75%</label>
+                    <label><input type="checkbox" disabled> 80%</label>
+                    <label><input type="checkbox" disabled> 85%</label>
+                    <label><input type="checkbox" disabled> 90%</label>
+                    <label><input type="checkbox" disabled> 95%</label>
+                    <label><input type="checkbox" disabled> 99%</label>
+                </div>
+
+            </div>
+
+
+            <div class="ficha-historia" style="margin-top: 22px;">
+
+                <h3>INVENTÁRIO</h3>
+
+                <table class="ficha-inventario-tabela">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Categoria</th>
+                            <th>Peso/Unid.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fichaInventarioArmas">
+                        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+        </div>
+
+
+        <div class="ficha-coluna-dir">
+
+            <div class="ficha-box">
+
+                <h3>ATRIBUTOS</h3>
+
+                <p>Agilidade:
+                    <span id="fichaAgilidade"></span>
+                </p>
+
+                <p>Força:
+                    <span id="fichaForca"></span>
+                </p>
+
+                <p>Intelecto:
+                    <span id="fichaIntelecto"></span>
+                </p>
+
+                <p>Presença:
+                    <span id="fichaPresenca"></span>
+                </p>
+
+                <p>Vigor:
+                    <span id="fichaVigor"></span>
+                </p>
+
+            </div>
+
+
+            <div class="ficha-box">
+
+                <h3>DIAGRAMA DE ATRIBUTOS</h3>
+
+                <div class="diagrama-atributos">
+
+                    <div class="hexagono hex-agilidade">
+                        <span class="rotulo">AGILIDADE</span>
+                        <span class="valor" id="fichaHexAgilidade"></span>
+                    </div>
+
+                    <div class="hexagono hex-forca">
+                        <span class="rotulo">FORÇA</span>
+                        <span class="valor" id="fichaHexForca"></span>
+                    </div>
+
+                    <div class="hexagono hex-intelecto">
+                        <span class="rotulo">INTELECTO</span>
+                        <span class="valor" id="fichaHexIntelecto"></span>
+                    </div>
+
+                    <div class="hexagono hex-presenca">
+                        <span class="rotulo">PRESENÇA</span>
+                        <span class="valor" id="fichaHexPresenca"></span>
+                    </div>
+
+                    <div class="hexagono hex-vigor">
+                        <span class="rotulo">VIGOR</span>
+                        <span class="valor" id="fichaHexVigor"></span>
+                    </div>
+
+                    <div class="hex-centro">ATRIBUTOS</div>
+
+                </div>
+
+            </div>
+
+
+            <div class="ficha-caixas-status">
+
+                <div class="caixa-status">
+                    <span class="rotulo-caixa">PV</span>
+                    <span class="valor-caixa" id="fichaPV"></span>
+                </div>
+
+                <div class="caixa-status">
+                    <span class="rotulo-caixa">PE</span>
+                    <span class="valor-caixa" id="fichaPE"></span>
+                </div>
+
+                <div class="caixa-status">
+                    <span class="rotulo-caixa">PROTEÇÃO</span>
+                    <span class="valor-caixa" id="fichaProtecao"></span>
+                </div>
+
+                <div class="caixa-status">
+                    <span class="rotulo-caixa">SAN</span>
+                    <span class="valor-caixa" id="fichaSAN"></span>
+                </div>
+
+            </div>
+
+
+            <div class="ficha-caixas-secundarias">
+
+                <div class="caixa-secundaria">
+                    <span class="rotulo-caixa">MOVIMENTO</span>
+                    <span class="valor-caixa">9m</span>
+                </div>
+
+                <div class="caixa-secundaria">
+                    <span class="rotulo-caixa">NEX</span>
+                    <span class="valor-caixa">___%</span>
+                </div>
+
+                <div class="caixa-secundaria">
+                    <span class="rotulo-caixa">CARGA</span>
+                    <span class="valor-caixa">__ / __</span>
+                </div>
+
+            </div>
+
+
+            <div class="ficha-historia" style="margin-top: 20px;">
+
+                <h3>STATUS &amp; CONDIÇÕES</h3>
+
+                <div class="checkbox-linha">
+                    <label><input type="checkbox" disabled> Ferido Leve</label>
+                    <label><input type="checkbox" disabled> Ferido Grave</label>
+                    <label><input type="checkbox" disabled> Nocauteado</label>
+                    <label><input type="checkbox" disabled> Incapacitado</label>
+                    <label><input type="checkbox" disabled> Sangrando</label>
+                    <label><input type="checkbox" disabled> Queimado</label>
+                    <label><input type="checkbox" disabled> Exausto</label>
+                    <label><input type="checkbox" disabled> Envenenado</label>
+                    <label><input type="checkbox" disabled> Amarrado</label>
+                    <label><input type="checkbox" disabled> Inconsciente</label>
+                    <label><input type="checkbox" disabled> Traumatizado</label>
+                    <label><input type="checkbox" disabled> Atordoado</label>
+                </div>
+
+            </div>
+
+        </div>
 
     </div>
 
@@ -1102,6 +1268,20 @@
         <h3>OBJETIVO</h3>
 
         <p id="fichaObjetivo"></p>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>ANOTAÇÕES</h3>
+
+        <div class="ficha-anotacoes-linhas">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
 
     </div>
 

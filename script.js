@@ -78,8 +78,13 @@ const abreviacaoAtributo = {
 // ARMAS
 // ============================================================
 
-let armaSelecionada = null;
+let armasSelecionadas = [];
 let nivelPersonagem = 1;
+
+// Quantas armas o personagem pode carregar: igual à Força, até um teto de 5
+function limiteArmas() {
+    return Math.min(atributos.forca, 5);
+}
 
 // Tabela de desbloqueio: Nível do personagem -> Categoria máxima de arma liberada
 function categoriaLiberada() {
@@ -148,9 +153,17 @@ const listaDeArmas = [
     { nome: "Sino-Faca Yamabushi", categoria: "Corte", nivel: 1, proficiencia: "Ritual", dano: "1d8", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "O guizo embutido dá vantagem em Intimidação após acertar." }
 ];
 
-function selecionarArma(nome) {
+function toggleArma(nome) {
     const arma = listaDeArmas.find(a => a.nome === nome);
     if (!arma) return;
+
+    const jaSelecionada = armasSelecionadas.some(a => a.nome === nome);
+
+    if (jaSelecionada) {
+        armasSelecionadas = armasSelecionadas.filter(a => a.nome !== nome);
+        mostrarArmas();
+        return;
+    }
 
     if (arma.nivel > categoriaLiberada()) {
         alert(
@@ -160,7 +173,15 @@ function selecionarArma(nome) {
         return;
     }
 
-    armaSelecionada = arma;
+    if (armasSelecionadas.length >= limiteArmas()) {
+        alert(
+            `Seu personagem só consegue carregar ${limiteArmas()} arma(s) de uma vez ` +
+            `(limite baseado na Força, até o máximo de 5).`
+        );
+        return;
+    }
+
+    armasSelecionadas.push(arma);
     mostrarArmas();
 }
 
@@ -169,22 +190,16 @@ function mostrarArmas() {
     const lista = document.getElementById("listaArmas");
     if (!lista) return;
 
+    const limite = limiteArmas();
+
     if (resumo) {
-        resumo.innerHTML = armaSelecionada
-            ? `
-                <div class="pontos-box">
-                    <p>ARMA EQUIPADA</p>
-                    <strong>${armaSelecionada.nome}</strong>
-                    <small>${armaSelecionada.categoria} · dano ${armaSelecionada.dano} · teste de ${armaSelecionada.pericia} · Categoria ${armaSelecionada.nivel}</small>
-                </div>
-            `
-            : `
-                <div class="pontos-box">
-                    <p>NÍVEL DO PERSONAGEM</p>
-                    <strong>${nivelPersonagem}</strong>
-                    <small>Categorias de arma liberadas: 0 até ${categoriaLiberada()}</small>
-                </div>
-            `;
+        resumo.innerHTML = `
+            <div class="pontos-box">
+                <p>ARMAS CARREGADAS</p>
+                <strong>${armasSelecionadas.length} / ${limite}</strong>
+                <small>Limite pela Força (${atributos.forca}), até o máximo de 5 · Categorias liberadas: 0 até ${categoriaLiberada()}</small>
+            </div>
+        `;
     }
 
     const categorias = ["Corte", "Haste", "Distância", "Impacto"];
@@ -194,17 +209,25 @@ function mostrarArmas() {
         if (armasDaCategoria.length === 0) return "";
 
         const itensHTML = armasDaCategoria.map(arma => {
-            const selecionada = armaSelecionada && armaSelecionada.nome === arma.nome;
-            const bloqueada = arma.nivel > categoriaLiberada();
+            const selecionada = armasSelecionadas.some(a => a.nome === arma.nome);
+            const categoriaBloqueada = arma.nivel > categoriaLiberada();
+            const limiteAtingido = !selecionada && armasSelecionadas.length >= limite;
+            const bloqueada = categoriaBloqueada || limiteAtingido;
+
+            let motivo = "";
+            if (categoriaBloqueada) {
+                motivo = `Requer Nível ${nivelMinimoParaCategoria(arma.nivel)}+`;
+            } else if (limiteAtingido) {
+                motivo = "Limite de armas carregadas atingido";
+            }
 
             return `
                 <label class="arma-item ${selecionada ? "selecionada" : ""} ${bloqueada ? "bloqueada" : ""}">
 
-                    <input type="radio"
-                           name="armaPrincipal"
+                    <input type="checkbox"
                            ${selecionada ? "checked" : ""}
                            ${bloqueada ? "disabled" : ""}
-                           onchange="selecionarArma('${arma.nome}')">
+                           onchange="toggleArma('${arma.nome}')">
 
                     <span class="arma-check-indicador"></span>
 
@@ -227,7 +250,7 @@ function mostrarArmas() {
 
                     <p class="arma-especial">${arma.especial}</p>
 
-                    ${bloqueada ? `<p class="arma-motivo">Requer Nível ${nivelMinimoParaCategoria(arma.nivel)}+</p>` : ""}
+                    ${bloqueada ? `<p class="arma-motivo">${motivo}</p>` : ""}
 
                 </label>
             `;
@@ -2114,8 +2137,10 @@ function obterPersonagem() {
 
         pericias: textoPericias(),
 
-        arma: armaSelecionada
-            ? `${armaSelecionada.nome} — Categoria ${armaSelecionada.nivel} · ${armaSelecionada.categoria} · ${armaSelecionada.proficiencia} · dano ${armaSelecionada.dano} · teste de ${armaSelecionada.pericia} · alcance ${armaSelecionada.alcance} · ${armaSelecionada.maos} · peso ${armaSelecionada.peso} · tamanho ${armaSelecionada.tamanho} · ${armaSelecionada.espaco} slot${armaSelecionada.espaco === 1 ? "" : "s"} — ${armaSelecionada.especial}`
+        arma: armasSelecionadas.length > 0
+            ? armasSelecionadas
+                .map(a => `${a.nome} — Categoria ${a.nivel} · ${a.categoria} · ${a.proficiencia} · dano ${a.dano} · teste de ${a.pericia} · alcance ${a.alcance} · ${a.maos} · peso ${a.peso} · tamanho ${a.tamanho} · ${a.espaco} slot${a.espaco === 1 ? "" : "s"} — ${a.especial}`)
+                .join(" | ")
             : "Nenhuma arma escolhida.",
 
         respostaParanormal:
@@ -2157,6 +2182,93 @@ function finalizarFicha() {
 // PREENCHER FICHA
 // ============================================================
 
+// Extrai uma estimativa de Proteção a partir do texto de proficiências da classe
+function extrairProtecao() {
+    if (!classeSelecionada) return "—";
+
+    const texto = classeSelecionada.proficiencias.toLowerCase();
+
+    if (texto.includes("pesad")) return "3 (Pesada)";
+    if (texto.includes("médi") || texto.includes("media")) return "2 (Média)";
+    if (texto.includes("leve")) return "1 (Leve)";
+
+    return "0 (Nenhuma)";
+}
+
+// Monta a lista de equipamento inicial combinando armas, proteção e itens temáticos
+function gerarEquipamento(personagem) {
+    const itens = [];
+
+    armasSelecionadas.forEach((arma, indice) => {
+        itens.push(`${arma.nome}${indice === 0 ? " (arma principal)" : ""}`);
+    });
+
+    if (classeSelecionada) {
+        itens.push(`Proteção condizente com: ${classeSelecionada.proficiencias}`);
+    }
+
+    if (origemSelecionada) {
+        itens.push(`Item pessoal ligado à origem de ${origemSelecionada.nome}`);
+    }
+
+    itens.push("Kit de sobrevivência básico (rações, corda, isqueiro)");
+    itens.push("Bolsa de utilidades");
+
+    return itens;
+}
+
+// Monta as linhas da tabela de Habilidades & Rituais a partir da progressão de NEX da classe
+function gerarTabelaHabilidades() {
+    if (!classeSelecionada || !Array.isArray(classeSelecionada.progressao)) {
+        return "";
+    }
+
+    return classeSelecionada.progressao.map(passo => `
+        <tr>
+            <td>${passo.habilidade}</td>
+            <td>${passo.nex}%</td>
+        </tr>
+    `).join("");
+}
+
+// Monta o bloco estruturado da arma principal (a primeira escolhida) e lista as demais
+function renderArmaDetalhe() {
+    if (armasSelecionadas.length === 0) {
+        return "<p>Nenhuma arma escolhida.</p>";
+    }
+
+    const a = armasSelecionadas[0];
+
+    let html = `
+        <p class="ficha-arma-linha"><strong>Nome:</strong> ${a.nome}</p>
+        <p class="ficha-arma-linha"><strong>Categoria:</strong> ${a.nivel} · ${a.categoria}</p>
+        <p class="ficha-arma-linha"><strong>Dano:</strong> ${a.dano} · <strong>Teste de</strong> ${a.pericia}</p>
+        <p class="ficha-arma-linha"><strong>Alcance:</strong> ${a.alcance}</p>
+        <p class="ficha-arma-linha"><strong>Propriedades:</strong> ${a.maos} · Peso ${a.peso} · Tamanho ${a.tamanho} · ${a.espaco} slot${a.espaco === 1 ? "" : "s"}</p>
+        <p class="ficha-arma-linha">${a.especial}</p>
+    `;
+
+    if (armasSelecionadas.length > 1) {
+        const extras = armasSelecionadas.slice(1).map(arma => arma.nome).join(", ");
+        html += `<p class="ficha-arma-linha"><strong>Armas extras carregadas:</strong> ${extras}</p>`;
+    }
+
+    return html;
+}
+
+// Monta as linhas da tabela de Inventário com todas as armas carregadas
+function gerarInventarioArmas() {
+    if (armasSelecionadas.length === 0) return "";
+
+    return armasSelecionadas.map(arma => `
+        <tr>
+            <td>${arma.nome}</td>
+            <td>${arma.categoria}</td>
+            <td>${arma.espaco} slot${arma.espaco === 1 ? "" : "s"}</td>
+        </tr>
+    `).join("");
+}
+
 function preencherFicha(personagem) {
     const campos = {
         fichaNome: personagem.personagem,
@@ -2169,13 +2281,18 @@ function preencherFicha(personagem) {
         fichaPV: personagem.pv,
         fichaPE: personagem.pe,
         fichaSAN: personagem.san,
+        fichaProtecao: extrairProtecao(),
         fichaPericias: personagem.pericias,
-        fichaArma: personagem.arma,
         fichaAgilidade: personagem.atributos.agilidade,
         fichaForca: personagem.atributos.forca,
         fichaIntelecto: personagem.atributos.intelecto,
         fichaPresenca: personagem.atributos.presenca,
         fichaVigor: personagem.atributos.vigor,
+        fichaHexAgilidade: personagem.atributos.agilidade,
+        fichaHexForca: personagem.atributos.forca,
+        fichaHexIntelecto: personagem.atributos.intelecto,
+        fichaHexPresenca: personagem.atributos.presenca,
+        fichaHexVigor: personagem.atributos.vigor,
         fichaAparencia: personagem.aparencia,
         fichaPersonalidade: personagem.personalidade,
         fichaHistorico: personagem.historico,
@@ -2189,6 +2306,44 @@ function preencherFicha(personagem) {
             elemento.textContent = valor;
         }
     });
+
+    if (origemSelecionada) {
+        const titulo = document.getElementById("fichaOrigemTitulo");
+        const descricao = document.getElementById("fichaOrigemDescricao");
+        const periciasOrigem = document.getElementById("fichaPericiasOrigem");
+        const habilidadeOrigem = document.getElementById("fichaHabilidadeOrigem");
+
+        if (titulo) titulo.textContent = origemSelecionada.nome;
+        if (descricao) descricao.textContent = origemSelecionada.descricao;
+        if (periciasOrigem) periciasOrigem.textContent = origemSelecionada.pericias.join(", ");
+        if (habilidadeOrigem) {
+            habilidadeOrigem.textContent =
+                `${origemSelecionada.habilidade.nome}. ${origemSelecionada.habilidade.descricao}`;
+        }
+    }
+
+    if (classeSelecionada) {
+        const proficienciasEl = document.getElementById("fichaProficiencias");
+        if (proficienciasEl) proficienciasEl.textContent = classeSelecionada.proficiencias;
+    }
+
+    const armaDetalhe = document.getElementById("fichaArmaDetalhe");
+    if (armaDetalhe) armaDetalhe.innerHTML = renderArmaDetalhe();
+
+    const equipamentoEl = document.getElementById("fichaEquipamento");
+    if (equipamentoEl) {
+        equipamentoEl.innerHTML = gerarEquipamento(personagem)
+            .map(item => `<li>${item}</li>`)
+            .join("");
+    }
+
+    const habilidadesTabela = document.getElementById("fichaHabilidadesTabela");
+    if (habilidadesTabela) habilidadesTabela.innerHTML = gerarTabelaHabilidades();
+
+    const inventarioArmas = document.getElementById("fichaInventarioArmas");
+    if (inventarioArmas && armasSelecionadas.length > 0) {
+        inventarioArmas.innerHTML = gerarInventarioArmas();
+    }
 }
 
 // ============================================================
