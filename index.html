@@ -231,6 +231,34 @@
                placeholder="Nome do jogador">
     </div>
 
+    <div class="campo grande campo-foto">
+        <label for="fotoPersonagemInput">FOTO DO PERSONAGEM</label>
+
+        <div class="foto-identidade-upload">
+            <label class="foto-dropzone" for="fotoPersonagemInput">
+                <img id="fotoPreview"
+                     class="foto-preview-editor"
+                     alt="Prévia da foto do personagem"
+                     hidden>
+
+                <span id="fotoPreviewPlaceholder">
+                    CLIQUE PARA ESCOLHER UMA FOTO
+                </span>
+            </label>
+
+            <input type="file"
+                   id="fotoPersonagemInput"
+                   accept="image/*"
+                   onchange="processarFotoPersonagem(event)">
+
+            <button type="button"
+                    class="botao-secundario botao-remover-foto"
+                    onclick="removerFotoPersonagem()">
+                REMOVER FOTO
+            </button>
+        </div>
+    </div>
+
     <div class="campo">
         <label>NÍVEL DO PERSONAGEM</label>
         <input type="number"
@@ -936,13 +964,18 @@
 
 
 
-    <div class="ficha-corpo">
+    <div class="ficha-corpo ficha-corpo-principal">
 
         <div>
 
             <div class="ficha-box">
 
                 <h3>IDENTIDADE</h3>
+
+                <img id="fichaFoto"
+                     class="ficha-foto-personagem"
+                     alt="Foto do personagem"
+                     hidden>
 
                 <p><strong>Personagem:</strong>
                     <span id="fichaPersonagem"></span>
@@ -1111,7 +1144,7 @@
     </div>
 
 
-    <div class="ficha-corpo">
+    <div class="ficha-corpo ficha-corpo-combate">
 
         <div>
 
@@ -1176,7 +1209,7 @@
     </div>
 
 
-    <div class="ficha-corpo">
+    <div class="ficha-corpo ficha-corpo-historia">
 
         <div>
 
@@ -1222,12 +1255,7 @@
                     <th>Peso/Unid.</th>
                 </tr>
             </thead>
-            <tbody id="fichaInventarioArmas">
-                <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-            </tbody>
+            <tbody id="fichaInventarioArmas"></tbody>
         </table>
 
     </div>
@@ -1304,8 +1332,35 @@
 <div class="modo-jogo">
 
     <div class="modo-jogo-topo">
+        <img id="jogoFoto"
+             class="jogo-foto-personagem"
+             alt="Foto do personagem"
+             hidden>
+
         <h1 id="jogoNome">PERSONAGEM</h1>
         <p id="jogoClasseOrigem"></p>
+
+        <div class="modo-jogo-progressao">
+            <label>
+                NÍVEL
+                <input id="jogoNivel"
+                       type="number"
+                       min="1"
+                       max="20"
+                       onchange="alterarNivelNoModo(this.value)">
+            </label>
+
+            <label>
+                NEX
+                <input id="jogoNex"
+                       type="number"
+                       min="0"
+                       max="99"
+                       step="5"
+                       onchange="alterarNexNoModo(this.value)">
+                <span>%</span>
+            </label>
+        </div>
     </div>
 
     <div class="modo-jogo-recursos">
@@ -1371,6 +1426,18 @@
             <span class="seta">▾</span>
         </button>
         <div class="secao-jogo-conteudo aberta" id="secaoJogoArma">
+            <button type="button"
+                    class="botao-editar-armas-jogo"
+                    onclick="toggleEditorArmasJogo()">
+                ⚔ ALTERAR ARMAS
+            </button>
+
+            <div id="editorArmasJogo"
+                 class="editor-armas-jogo"
+                 hidden>
+                <div id="listaEditorArmasJogo"></div>
+            </div>
+
             <div id="jogoArmas"></div>
         </div>
     </div>

@@ -6,6 +6,10 @@
     box-sizing: border-box;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 :root {
     --preto: #050505;
     --preto-claro: #111111;
@@ -52,6 +56,14 @@ body {
 
 .tela.ativa {
     display: block;
+}
+
+#modoJogo {
+    display: none !important;
+}
+
+#modoJogo.ativa {
+    display: block !important;
 }
 
 #inicio.ativa {
@@ -295,6 +307,76 @@ select {
 
 textarea {
     min-height: 150px;
+}
+
+/* FOTO DO PERSONAGEM */
+
+.campo-foto {
+    margin-top: 4px;
+}
+
+.foto-identidade-upload {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.foto-dropzone {
+    width: 190px;
+    height: 230px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 12px;
+    background: #111;
+    border: 1px dashed var(--dourado);
+    color: #aaa;
+    text-align: center;
+    font-family: "Cinzel", serif;
+    font-size: 12px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: .25s;
+}
+
+.foto-dropzone:hover {
+    border-color: var(--vermelho-claro);
+    background: #181818;
+    color: var(--dourado);
+}
+
+.foto-preview-editor {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#fotoPersonagemInput {
+    display: none;
+}
+
+.botao-remover-foto {
+    align-self: flex-end;
+    min-height: 44px;
+}
+
+.ficha-foto-personagem,
+.jogo-foto-personagem {
+    display: block;
+    width: 170px;
+    height: 210px;
+    object-fit: cover;
+    margin: 10px auto 14px;
+    border: 2px solid #57462b;
+    background: #111;
+}
+
+.jogo-foto-personagem {
+    width: 160px;
+    height: 195px;
+    margin: 0 auto 14px;
 }
 
 /* ATRIBUTOS */
@@ -1000,14 +1082,14 @@ textarea {
 /* FICHA */
 
 #fichaFinal {
-    padding: 50px 20px;
+    padding: clamp(24px, 4vw, 50px) 16px 60px;
 }
 
 .ficha {
     width: 210mm;
     max-width: 100%;
     margin: auto;
-    padding: 8mm;
+    padding: clamp(20px, 3vw, 32px);
     background: rgba(10,10,10,.95);
     color: #e5ddce;
     border: 2px solid #444;
@@ -1120,7 +1202,7 @@ textarea {
 .ficha-corpo {
     display: grid;
     grid-template-columns: 1.15fr 1fr;
-    gap: 10px;
+    gap: 16px;
     align-items: start;
 }
 
@@ -1176,15 +1258,19 @@ textarea {
 
 .ficha-caixas-status {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     margin-top: 10px;
+    min-width: 0;
+    width: 100%;
 }
 
 .caixa-status {
     border: 1px solid #444;
     padding: 6px 6px;
     text-align: center;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .caixa-status .rotulo-caixa {
@@ -1206,6 +1292,8 @@ textarea {
 .caixa-recurso .valor-caixa {
     font-size: 18px;
     margin: 0;
+    min-width: 0;
+    white-space: nowrap;
 }
 
 .controle-recurso {
@@ -1214,6 +1302,19 @@ textarea {
     justify-content: center;
     gap: 6px;
     margin-top: 4px;
+    min-width: 0;
+}
+
+.ficha-caixas-status .controle-recurso {
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.ficha-caixas-status .controle-recurso .valor-caixa {
+    order: -1;
+    flex: 0 0 100%;
+    overflow: hidden;
+    text-overflow: clip;
 }
 
 .controle-recurso button {
@@ -1302,33 +1403,47 @@ textarea {
     padding: 6px 6px;
 }
 
+.inventario-vazio {
+    color: #888;
+    text-align: center;
+    font-style: italic;
+}
+
 /* ANOTAÇÕES */
 
 /* BOTÕES DE EXPORTAÇÃO */
 
 .acoes-exportar {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    flex-wrap: wrap;
-    margin-top: 35px;
-    padding-top: 25px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 36px;
+    padding: 28px 0 4px;
     border-top: 1px solid #444;
 }
 
 .acoes-exportar button {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     font-size: 16px;
+    width: 100%;
+    min-height: 50px;
+}
+
+.acoes-exportar button:first-child {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, var(--vermelho), #4e0000);
+    border-color: var(--vermelho-claro);
 }
 
 /* AÇÃO DE RECOMEÇAR */
 
 .acao-recomecar {
     text-align: center;
-    margin-top: 30px;
-    padding-top: 25px;
+    margin-top: 24px;
+    padding-top: 22px;
     border-top: 1px solid #444;
 }
 
@@ -1372,6 +1487,45 @@ textarea {
     color: #aaa;
     font-size: 13px;
     letter-spacing: .5px;
+}
+
+.modo-jogo-progressao {
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.modo-jogo-progressao label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+.modo-jogo-progressao input {
+    width: 64px;
+    padding: 6px 7px;
+    color: var(--texto);
+    background: #111;
+    border: 1px solid #555;
+    text-align: center;
+    font-family: "Crimson Pro", serif;
+    font-size: 15px;
+}
+
+.modo-jogo-progressao input:focus {
+    outline: 1px solid var(--dourado);
+    border-color: var(--dourado);
+}
+
+.modo-jogo-progressao label span {
+    color: #aaa;
+    margin-left: -4px;
 }
 
 .modo-jogo-recursos {
@@ -1486,6 +1640,60 @@ textarea {
     margin-bottom: 0;
 }
 
+.botao-editar-armas-jogo {
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    color: var(--dourado);
+    background: #111;
+    border: 1px solid #555;
+    letter-spacing: 1px;
+}
+
+.botao-editar-armas-jogo:hover {
+    background: #181818;
+    border-color: var(--dourado);
+}
+
+.editor-armas-jogo {
+    margin-bottom: 14px;
+    padding: 12px;
+    background: #0b0b0b;
+    border: 1px solid #333;
+}
+
+.grupo-editor-armas-jogo {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.grupo-editor-armas-jogo:last-child {
+    margin-bottom: 0;
+}
+
+.grupo-editor-armas-jogo > strong {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+.grupo-editor-armas-jogo label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    color: #e5ddce;
+    background: #111;
+    border: 1px solid #292929;
+    font-size: 14px;
+}
+
+.grupo-editor-armas-jogo label:hover {
+    border-color: var(--dourado);
+}
+
 .carta-arma-jogo-topo {
     display: flex;
     align-items: center;
@@ -1585,11 +1793,287 @@ textarea {
     }
 
     .acoes-exportar {
-        flex-direction: column;
+        grid-template-columns: 1fr;
+        gap: 10px;
     }
 
     .acoes-exportar button {
         width: 100%;
         justify-content: center;
+    }
+
+    .acoes-exportar button:first-child {
+        grid-column: auto;
+    }
+}
+
+/* ACABAMENTO FINAL DA FICHA */
+
+.ficha {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--dourado);
+    background:
+        linear-gradient(rgba(10, 10, 10, .94), rgba(10, 10, 10, .97)),
+        radial-gradient(circle at top right, rgba(117, 0, 0, .22), transparent 42%);
+    box-shadow:
+        0 0 0 4px rgba(5, 5, 5, .95),
+        0 0 0 5px rgba(199, 168, 91, .45),
+        0 18px 50px rgba(0, 0, 0, .55);
+}
+
+.ficha::before {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border: 1px solid rgba(199, 168, 91, .32);
+    pointer-events: none;
+}
+
+.ficha > * {
+    position: relative;
+    z-index: 1;
+}
+
+.ficha-topo {
+    padding: 4px 0 12px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(199, 168, 91, .7);
+}
+
+.ficha-topo-emblema {
+    border-color: var(--dourado);
+    color: var(--dourado);
+    box-shadow: 0 0 0 3px rgba(199, 168, 91, .12);
+}
+
+.ficha-header {
+    padding: 8px 0 14px;
+    margin-bottom: 4px;
+}
+
+.ficha-header h1 {
+    margin: 6px 0 0;
+    color: var(--dourado);
+    text-shadow: 0 2px 12px rgba(199, 168, 91, .18);
+}
+
+.ficha-corpo {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 14px;
+    margin: 12px 0;
+    align-items: start;
+}
+
+.ficha-corpo > div {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.ficha-box,
+.ficha-historia {
+    width: 100%;
+    margin: 0;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(18, 18, 18, .92), rgba(8, 8, 8, .82));
+    border: 1px solid rgba(199, 168, 91, .34);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .025);
+}
+
+.ficha-box h3,
+.ficha-historia h3 {
+    margin: -12px -14px 10px;
+    padding: 7px 12px;
+    background: linear-gradient(90deg, var(--vermelho), #4d0000);
+    border-bottom: 1px solid rgba(199, 168, 91, .38);
+    color: #fff;
+    font-size: 13px;
+}
+
+.ficha-box p {
+    margin: 5px 0;
+    line-height: 1.3;
+}
+
+.ficha-historia p {
+    line-height: 1.42;
+}
+
+.ficha-foto-personagem {
+    width: 180px;
+    height: 220px;
+    margin: 14px auto 18px;
+    padding: 5px;
+    object-fit: cover;
+    background: #080808;
+    border: 1px solid var(--dourado);
+    outline: 1px solid rgba(199, 168, 91, .35);
+    outline-offset: 4px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .45);
+}
+
+.ficha-caixas-status,
+.ficha-caixas-secundarias {
+    margin-top: 0;
+}
+
+.ficha-caixas-status {
+    gap: 7px;
+}
+
+.ficha-caixas-secundarias {
+    gap: 7px;
+}
+
+.caixa-status,
+.caixa-secundaria {
+    background: rgba(8, 8, 8, .55);
+    border-color: rgba(199, 168, 91, .3);
+}
+
+.ficha-historia + .ficha-historia {
+    margin-top: 0;
+}
+
+.tabela-habilidades,
+.ficha-inventario-tabela {
+    margin-top: 0;
+}
+
+.acoes-exportar {
+    margin-top: 20px;
+    padding-top: 18px;
+}
+
+@media (max-width: 800px) {
+    .ficha {
+        padding: 22px 16px;
+    }
+
+    .ficha-corpo {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin: 10px 0;
+    }
+
+    .ficha-foto-personagem {
+        width: 165px;
+        height: 205px;
+    }
+}
+
+/* ORGANIZAÇÃO COMPACTA DOS BLOCOS DA FICHA */
+
+.ficha-corpo-principal {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-areas:
+        "identidade atributos"
+        "classe status"
+        "origem origem"
+        "secundaria secundaria";
+    row-gap: 10px;
+    align-items: stretch;
+}
+
+.ficha-corpo-principal > div {
+    display: contents;
+}
+
+.ficha-corpo-principal > div:first-child > .ficha-box:nth-child(1) {
+    grid-area: identidade;
+}
+
+.ficha-corpo-principal > div:first-child > .ficha-box:nth-child(2) {
+    grid-area: classe;
+}
+
+.ficha-corpo-principal > div:first-child > .ficha-historia {
+    grid-area: origem;
+}
+
+.ficha-corpo-principal > div:nth-child(2) > .ficha-box {
+    grid-area: atributos;
+}
+
+.ficha-corpo-principal > div:nth-child(2) > .ficha-caixas-status {
+    grid-area: status;
+}
+
+.ficha-corpo-principal > div:nth-child(2) > .ficha-caixas-secundarias {
+    grid-area: secundaria;
+}
+
+.ficha-corpo-combate,
+.ficha-corpo-historia {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+        "primeiro segundo"
+        "terceiro quarto";
+    row-gap: 10px;
+    align-items: stretch;
+}
+
+.ficha-corpo-combate > div,
+.ficha-corpo-historia > div {
+    display: contents;
+}
+
+.ficha-corpo-principal > div > *,
+.ficha-corpo-combate > div > *,
+.ficha-corpo-historia > div > * {
+    min-width: 0;
+}
+
+.ficha-corpo-combate > div:first-child > .ficha-historia:nth-child(1),
+.ficha-corpo-historia > div:first-child > .ficha-historia:nth-child(1) {
+    grid-area: primeiro;
+}
+
+.ficha-corpo-combate > div:first-child > .ficha-historia:nth-child(2),
+.ficha-corpo-historia > div:first-child > .ficha-historia:nth-child(2) {
+    grid-area: terceiro;
+}
+
+.ficha-corpo-combate > div:nth-child(2) > .ficha-historia:nth-child(1),
+.ficha-corpo-historia > div:nth-child(2) > .ficha-historia:nth-child(1) {
+    grid-area: segundo;
+}
+
+.ficha-corpo-combate > div:nth-child(2) > .ficha-historia:nth-child(2),
+.ficha-corpo-historia > div:nth-child(2) > .ficha-historia:nth-child(2) {
+    grid-area: quarto;
+}
+
+@media (max-width: 800px) {
+    .ficha-corpo-principal,
+    .ficha-corpo-combate,
+    .ficha-corpo-historia {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "identidade"
+            "atributos"
+            "classe"
+            "status"
+            "origem"
+            "secundaria";
+        gap: 10px;
+    }
+
+    .ficha-corpo-principal > div:nth-child(2) > .ficha-caixas-secundarias {
+        grid-area: secundaria;
+        margin-top: 0;
+    }
+
+    .ficha-corpo-combate,
+    .ficha-corpo-historia {
+        grid-template-areas:
+            "primeiro"
+            "segundo"
+            "terceiro"
+            "quarto";
     }
 }

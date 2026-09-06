@@ -8,6 +8,7 @@
 
 let etapaAtual = 1;
 let pontosDisponiveis = 3;
+let fotoPersonagem = "";
 
 let origemSelecionada = null;
 let categoriaSelecionada = "";
@@ -167,6 +168,7 @@ function salvarProgresso() {
             nexPersonagem,
             statsManuais: { ...statsManuais },
             statusAtual: { ...statusAtual },
+            fotoPersonagem,
             respostaParanormal: document.getElementById("respostaEle")?.dataset.resposta || null,
             campos: {
                 personagem: document.getElementById("personagem")?.value || "",
@@ -249,6 +251,7 @@ function restaurarProgresso() {
     nexPersonagem = typeof salvo.nexPersonagem === "number" ? salvo.nexPersonagem : 0;
     statsManuais = { ...statsManuais, ...(salvo.statsManuais || {}) };
     statusAtual = { ...statusAtual, ...(salvo.statusAtual || {}) };
+    fotoPersonagem = salvo.fotoPersonagem || "";
 
     const nivelInput = document.getElementById("nivelPersonagem");
     if (nivelInput) nivelInput.value = nivelPersonagem;
@@ -263,6 +266,8 @@ function restaurarProgresso() {
         });
     }
 
+    atualizarFotoPersonagem();
+
     if (salvo.respostaParanormal) {
         responderEle(salvo.respostaParanormal);
     }
@@ -270,6 +275,7 @@ function restaurarProgresso() {
     if (salvo.finalizado) {
         finalizarFicha();
     } else {
+        mostrarTela("criador");
         mudarEtapa(salvo.etapaAtual || 1);
     }
 }
@@ -300,6 +306,8 @@ function alterarNex() {
     const campo = document.getElementById("nexPersonagem");
     if (!campo) return;
 
+    const personagemAntes = obterPersonagem();
+
     let valor = parseInt(campo.value, 10);
     if (isNaN(valor)) valor = 0;
     valor = Math.max(0, Math.min(99, valor));
@@ -307,7 +315,24 @@ function alterarNex() {
     campo.value = valor;
     nexPersonagem = valor;
 
+    const personagemDepois = obterPersonagem();
+    ["pv", "pe", "san"].forEach(campoStatus => {
+        if (statusAtual[campoStatus] === null) return;
+
+        const maximoAntes = Number(personagemAntes[campoStatus]) || 0;
+        const maximoDepois = Number(personagemDepois[campoStatus]) || 0;
+        const aumento = maximoDepois - maximoAntes;
+
+        // Ao subir o NEX, o recurso atual acompanha o aumento do máximo.
+        // Assim, um personagem que estava cheio continua cheio; se estava
+        // ferido ou já gastou PE/SAN, conserva essa diferença.
+        if (aumento > 0) {
+            statusAtual[campoStatus] += aumento;
+        }
+    });
+
     atualizarCaracteristicas();
+    ["pv", "pe", "san"].forEach(atualizarBarraStatus);
     salvarProgresso();
 }
 
@@ -2432,6 +2457,105 @@ function responderEle(resposta) {
 }
 
 // ============================================================
+// FOTO DO PERSONAGEM
+// ============================================================
+
+function atualizarFotoPersonagem() {
+    const imagens = [
+        document.getElementById("fotoPreview"),
+        document.getElementById("fichaFoto"),
+        document.getElementById("jogoFoto")
+    ];
+
+    imagens.forEach(imagem => {
+        if (!imagem) return;
+
+        imagem.src = fotoPersonagem || "";
+        imagem.hidden = !fotoPersonagem;
+    });
+
+    const placeholder = document.getElementById("fotoPreviewPlaceholder");
+    if (placeholder) {
+        placeholder.hidden = !!fotoPersonagem;
+    }
+}
+
+function processarFotoPersonagem(evento) {
+    const arquivo = evento.target.files?.[0];
+    if (!arquivo) return;
+
+    if (!arquivo.type.startsWith("image/")) {
+        alert("Escolha um arquivo de imagem válido.");
+        evento.target.value = "";
+        return;
+    }
+
+    const leitor = new FileReader();
+
+    leitor.onload = eventoLeitura => {
+        const imagem = new Image();
+
+        imagem.onload = () => {
+            const tamanhoMaximo = 900;
+            const escala = Math.min(
+                1,
+                tamanhoMaximo / imagem.width,
+                tamanhoMaximo / imagem.height
+            );
+
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(imagem.width * escala);
+            canvas.height = Math.round(imagem.height * escala);
+
+            const contexto = canvas.getContext("2d");
+            contexto.drawImage(
+                imagem,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            fotoPersonagem = canvas.toDataURL("image/jpeg", 0.84);
+            atualizarFotoPersonagem();
+            salvarProgresso();
+        };
+
+        imagem.src = eventoLeitura.target.result;
+    };
+
+    leitor.readAsDataURL(arquivo);
+}
+
+function removerFotoPersonagem() {
+    fotoPersonagem = "";
+
+    const input = document.getElementById("fotoPersonagemInput");
+    if (input) input.value = "";
+
+    atualizarFotoPersonagem();
+    salvarProgresso();
+}
+
+function alterarNivelNoModo(valor) {
+    const campo = document.getElementById("nivelPersonagem");
+    if (!campo) return;
+
+    campo.value = valor;
+    alterarNivelPersonagem();
+    preencherModoJogo(obterPersonagem());
+}
+
+function alterarNexNoModo(valor) {
+    const campo = document.getElementById("nexPersonagem");
+    if (!campo) return;
+
+    campo.value = valor;
+    alterarNex();
+    preencherModoJogo(obterPersonagem());
+}
+
+// ============================================================
 // OBTER PERSONAGEM
 // ============================================================
 
@@ -2441,6 +2565,7 @@ function obterPersonagem() {
     return {
         personagem: document.getElementById("personagem")?.value || "Sem nome",
         jogador: document.getElementById("jogador")?.value || "Não informado",
+        foto: fotoPersonagem,
         nivel: nivelPersonagem,
         aparencia: document.getElementById("aparencia")?.value || "Não informado",
         personalidade: document.getElementById("personalidade")?.value || "Não informado",
@@ -2527,8 +2652,7 @@ function finalizarFicha() {
 
     const personagem = obterPersonagem();
 
-    document.getElementById("criador")?.classList.remove("ativa");
-    document.getElementById("fichaFinal")?.classList.add("ativa");
+    mostrarTela("fichaFinal");
 
     preencherFicha(personagem);
 
@@ -2701,6 +2825,12 @@ function preencherFicha(personagem) {
         }
     });
 
+    const fichaFoto = document.getElementById("fichaFoto");
+    if (fichaFoto) {
+        fichaFoto.src = personagem.foto || "";
+        fichaFoto.hidden = !personagem.foto;
+    }
+
     if (origemSelecionada) {
         const titulo = document.getElementById("fichaOrigemTitulo");
         const descricao = document.getElementById("fichaOrigemDescricao");
@@ -2735,8 +2865,12 @@ function preencherFicha(personagem) {
     if (habilidadesTabela) habilidadesTabela.innerHTML = gerarTabelaHabilidades();
 
     const inventarioArmas = document.getElementById("fichaInventarioArmas");
-    if (inventarioArmas && (armasSelecionadas.length > 0 || protecaoSelecionada || escudoEquipado)) {
-        inventarioArmas.innerHTML = gerarInventarioArmas();
+    if (inventarioArmas) {
+        const possuiItens = armasSelecionadas.length > 0 || protecaoSelecionada || escudoEquipado;
+
+        inventarioArmas.innerHTML = possuiItens
+            ? gerarInventarioArmas()
+            : `<tr><td colspan="3" class="inventario-vazio">Nenhum item equipado.</td></tr>`;
     }
 }
 
@@ -3096,13 +3230,11 @@ function gerarImagem() {
 
     const areaExportar = ficha.querySelector(".acoes-exportar");
 
-    const botaoCriarOutro = Array.from(
-        ficha.querySelectorAll(":scope > button")
-    ).find(botao => botao.textContent.includes("CRIAR OUTRO PERSONAGEM"));
+    const acaoRecomecar = ficha.querySelector(".acao-recomecar");
 
     // Esconde os botões antes de capturar, para não aparecerem na imagem
     if (areaExportar) areaExportar.style.display = "none";
-    if (botaoCriarOutro) botaoCriarOutro.style.display = "none";
+    if (acaoRecomecar) acaoRecomecar.style.display = "none";
 
     // Força a largura exata de uma folha A4 (210mm) em pixels, independente
     // do zoom/tela do dispositivo, para a imagem sair sempre no formato certo
@@ -3121,7 +3253,7 @@ function gerarImagem() {
         ficha.style.width = larguraOriginal;
         ficha.style.maxWidth = maxLarguraOriginal;
         if (areaExportar) areaExportar.style.display = "";
-        if (botaoCriarOutro) botaoCriarOutro.style.display = "";
+        if (acaoRecomecar) acaoRecomecar.style.display = "";
 
         const personagem = obterPersonagem();
 
@@ -3138,7 +3270,7 @@ function gerarImagem() {
         ficha.style.width = larguraOriginal;
         ficha.style.maxWidth = maxLarguraOriginal;
         if (areaExportar) areaExportar.style.display = "";
-        if (botaoCriarOutro) botaoCriarOutro.style.display = "";
+        if (acaoRecomecar) acaoRecomecar.style.display = "";
 
         console.error(erro);
         alert("Não foi possível gerar a imagem da ficha.");
@@ -3265,11 +3397,7 @@ async function compartilharSite() {
 // ============================================================
 
 function voltarInicio() {
-    document.getElementById("fichaFinal")
-        ?.classList.remove("ativa");
-
-    document.getElementById("criador")
-        ?.classList.add("ativa");
+    mostrarTela("inicio");
 
     window.scrollTo({
         top: 0,
@@ -3284,8 +3412,7 @@ function voltarInicio() {
 function abrirModoJogo() {
     const personagem = obterPersonagem();
 
-    document.getElementById("fichaFinal")?.classList.remove("ativa");
-    document.getElementById("modoJogo")?.classList.add("ativa");
+    mostrarTela("modoJogo");
 
     preencherModoJogo(personagem);
 
@@ -3293,8 +3420,7 @@ function abrirModoJogo() {
 }
 
 function voltarParaFicha() {
-    document.getElementById("modoJogo")?.classList.remove("ativa");
-    document.getElementById("fichaFinal")?.classList.add("ativa");
+    mostrarTela("fichaFinal");
 
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -3313,13 +3439,68 @@ function toggleSecaoJogo(id) {
     }
 }
 
+function toggleEditorArmasJogo() {
+    const editor = document.getElementById("editorArmasJogo");
+    if (!editor) return;
+
+    editor.hidden = !editor.hidden;
+    renderizarEditorArmasJogo();
+}
+
+function renderizarEditorArmasJogo() {
+    const lista = document.getElementById("listaEditorArmasJogo");
+    if (!lista) return;
+
+    const categorias = ["Corte", "Haste", "Distância", "Impacto"];
+
+    lista.innerHTML = categorias.map(categoria => {
+        const armas = listaDeArmas.filter(arma => arma.categoria === categoria);
+
+        return `
+            <div class="grupo-editor-armas-jogo">
+                <strong>${categoria}</strong>
+                ${armas.map(arma => `
+                    <label>
+                        <input type="checkbox"
+                               ${armasSelecionadas.some(selecionada => selecionada.nome === arma.nome) ? "checked" : ""}
+                               onchange="alterarArmaNoModo('${arma.nome}')">
+                        <span>${arma.nome}</span>
+                    </label>
+                `).join("")}
+            </div>
+        `;
+    }).join("");
+}
+
+function alterarArmaNoModo(nome) {
+    toggleArma(nome);
+    preencherModoJogo(obterPersonagem());
+    renderizarEditorArmasJogo();
+}
+
 function preencherModoJogo(personagem) {
+    const jogoFoto = document.getElementById("jogoFoto");
+    if (jogoFoto) {
+        jogoFoto.src = personagem.foto || "";
+        jogoFoto.hidden = !personagem.foto;
+    }
+
     const nomeEl = document.getElementById("jogoNome");
     if (nomeEl) nomeEl.textContent = personagem.personagem;
 
     const classeOrigemEl = document.getElementById("jogoClasseOrigem");
     if (classeOrigemEl) {
-        classeOrigemEl.textContent = `${personagem.classe} · ${personagem.origem} · Nível ${personagem.nivel} · NEX ${personagem.nex}%`;
+        classeOrigemEl.textContent = `${personagem.classe} · ${personagem.origem}`;
+    }
+
+    const nivelEl = document.getElementById("jogoNivel");
+    if (nivelEl) {
+        nivelEl.value = personagem.nivel;
+    }
+
+    const nexEl = document.getElementById("jogoNex");
+    if (nexEl) {
+        nexEl.value = personagem.nex;
     }
 
     atualizarBarraStatus("pv");
@@ -3378,6 +3559,8 @@ function preencherModoJogo(personagem) {
             : `<p class="aviso-vazio">Nenhuma arma equipada.</p>`;
     }
 
+    renderizarEditorArmasJogo();
+
     const periciasEl = document.getElementById("jogoPericias");
     if (periciasEl) {
         const nomesOrigem = origemSelecionada ? origemSelecionada.pericias : [];
@@ -3404,9 +3587,16 @@ function preencherModoJogo(personagem) {
 // NAVEGAÇÃO E INICIALIZAÇÃO
 // ============================================================
 
+function mostrarTela(idTela) {
+    document.querySelectorAll(".tela").forEach(tela => {
+        tela.classList.remove("ativa");
+    });
+
+    document.getElementById(idTela)?.classList.add("ativa");
+}
+
 function criarPersonagem() {
-    document.getElementById("inicio")?.classList.remove("ativa");
-    document.getElementById("criador")?.classList.add("ativa");
+    mostrarTela("criador");
     
     mudarEtapa(1);
     
@@ -3452,6 +3642,7 @@ function mudarEtapa(novaEtapa) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    mostrarTela("inicio");
     atualizarProgresso();
     atualizarEfeitosDeAtributo();
     restaurarProgresso();
@@ -3467,11 +3658,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 // Transição da Tela Inicial para o Criador
 function criarPersonagem() {
-    const telaInicio = document.getElementById("inicio");
-    const telaCriador = document.getElementById("criador");
-
-    if (telaInicio) telaInicio.classList.remove("ativa");
-    if (telaCriador) telaCriador.classList.add("ativa");
+    mostrarTela("criador");
 
     mudarEtapa(1);
 
