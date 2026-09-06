@@ -239,7 +239,18 @@
                max="20"
                value="1"
                oninput="alterarNivelPersonagem()">
-        <span id="nivelEfeito" class="atributo-efeito">Libera armas de Categoria 0</span>
+    </div>
+
+    <div class="campo">
+        <label>NEX (%)</label>
+        <input type="number"
+               id="nexPersonagem"
+               min="0"
+               max="99"
+               step="5"
+               value="0"
+               oninput="alterarNex()">
+        <span id="nexEfeito" class="atributo-efeito">Ganhos de PV/PE/SAN aumentam a cada novo NEX</span>
     </div>
 
     <div class="campo grande">
@@ -672,10 +683,8 @@
     <h2>PERÍCIAS</h2>
 
     <p>
-        Escolha em quais perícias seu personagem foi treinado.
-        Cada perícia usa um atributo — você só pode treinar tantas perícias daquele
-        atributo quanto o valor do próprio atributo, e o total de perícias treinadas
-        não pode passar do limite da sua classe.
+        Escolha em quais perícias seu personagem foi treinado. Cada perícia usa
+        um atributo — sem limite de quantas você pode treinar.
     </p>
 
 </div>
@@ -771,14 +780,17 @@
     <h2>EQUIPAMENTO</h2>
 
     <p>
-        Escolha as armas que seu personagem vai carregar. O limite de armas é igual
-        à sua Força, até no máximo 5. A primeira arma escolhida se torna a principal.
+        Escolha as armas e proteções que seu personagem vai carregar. Cada item ocupa
+        espaço no inventário, e sua Força define quanto espaço você tem no total
+        (2 com Força 0, ou Força × 5 a partir daí). A primeira arma escolhida se torna a principal.
     </p>
-
 </div>
 
 
 <div id="resumoArma" class="resumo-arma"></div>
+
+
+<div id="listaProtecoes" class="lista-armas"></div>
 
 
 <div id="listaArmas" class="lista-armas"></div>
@@ -924,181 +936,69 @@
 
 
 
-    <div class="ficha-grid">
-
-
-        <div class="ficha-box">
-
-            <h3>IDENTIDADE</h3>
-
-            <p><strong>Personagem:</strong>
-                <span id="fichaPersonagem"></span>
-            </p>
-
-            <p><strong>Jogador:</strong>
-                <span id="fichaJogador"></span>
-            </p>
-
-            <p><strong>Nível:</strong>
-                <span id="fichaNivel"></span>
-            </p>
-
-            <p><strong>Origem:</strong>
-                <span id="fichaOrigem"></span>
-            </p>
-
-        </div>
-
-
-
-        <div class="ficha-box">
-
-            <h3>CLASSE</h3>
-
-            <p><strong>Categoria:</strong>
-                <span id="fichaCategoria"></span>
-            </p>
-
-            <p><strong>Classe:</strong>
-                <span id="fichaClasse"></span>
-            </p>
-
-        </div>
-
-    </div>
-
-
-    <div class="ficha-historia ficha-origem">
-
-        <h3>ORIGEM</h3>
-
-        <h4 id="fichaOrigemTitulo"></h4>
-
-        <p id="fichaOrigemDescricao"></p>
-
-        <p>
-            <strong>Perícias treinadas:</strong>
-            <span id="fichaPericiasOrigem"></span>
-        </p>
-
-        <p id="fichaHabilidadeOrigem"></p>
-
-    </div>
-
-
     <div class="ficha-corpo">
 
-        <div class="ficha-coluna-esq">
+        <div>
 
-            <div class="ficha-historia">
+            <div class="ficha-box">
 
-                <h3>PROFICIÊNCIAS</h3>
+                <h3>IDENTIDADE</h3>
 
-                <p id="fichaProficiencias"></p>
+                <p><strong>Personagem:</strong>
+                    <span id="fichaPersonagem"></span>
+                </p>
 
-            </div>
+                <p><strong>Jogador:</strong>
+                    <span id="fichaJogador"></span>
+                </p>
 
+                <p><strong>Nível:</strong>
+                    <span id="fichaNivel"></span>
+                </p>
 
-            <div class="ficha-historia">
-
-                <h3>PERÍCIAS TREINADAS</h3>
-
-                <p id="fichaPericias"></p>
-
-            </div>
-
-
-            <div class="ficha-historia">
-
-                <h3>ARMA PRINCIPAL</h3>
-
-                <div id="fichaArmaDetalhe"></div>
+                <p><strong>Origem:</strong>
+                    <span id="fichaOrigem"></span>
+                </p>
 
             </div>
 
 
-            <div class="ficha-historia">
+            <div class="ficha-box">
 
-                <h3>EQUIPAMENTO</h3>
+                <h3>CLASSE</h3>
 
-                <ul id="fichaEquipamento"></ul>
+                <p><strong>Categoria:</strong>
+                    <span id="fichaCategoria"></span>
+                </p>
 
-            </div>
-
-
-            <div class="ficha-historia">
-
-                <h3>HABILIDADES &amp; RITUAIS</h3>
-
-                <table class="tabela-habilidades">
-                    <thead>
-                        <tr>
-                            <th>Habilidade</th>
-                            <th>NEX que libera</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fichaHabilidadesTabela"></tbody>
-                </table>
+                <p><strong>Classe:</strong>
+                    <span id="fichaClasse"></span>
+                </p>
 
             </div>
 
 
-            <div class="ficha-nex-progresso">
+            <div class="ficha-historia ficha-origem">
 
-                <div class="ficha-nex-titulo">NEX — PROGRESSO TOTAL</div>
+                <h3>ORIGEM</h3>
 
-                <div class="checkbox-linha">
-                    <label><input type="checkbox" disabled> 5%</label>
-                    <label><input type="checkbox" disabled> 10%</label>
-                    <label><input type="checkbox" disabled> 15%</label>
-                    <label><input type="checkbox" disabled> 20%</label>
-                    <label><input type="checkbox" disabled> 25%</label>
-                    <label><input type="checkbox" disabled> 30%</label>
-                    <label><input type="checkbox" disabled> 35%</label>
-                    <label><input type="checkbox" disabled> 40%</label>
-                    <label><input type="checkbox" disabled> 45%</label>
-                    <label><input type="checkbox" disabled> 50%</label>
-                    <label><input type="checkbox" disabled> 55%</label>
-                    <label><input type="checkbox" disabled> 60%</label>
-                    <label><input type="checkbox" disabled> 65%</label>
-                    <label><input type="checkbox" disabled> 70%</label>
-                    <label><input type="checkbox" disabled> 75%</label>
-                    <label><input type="checkbox" disabled> 80%</label>
-                    <label><input type="checkbox" disabled> 85%</label>
-                    <label><input type="checkbox" disabled> 90%</label>
-                    <label><input type="checkbox" disabled> 95%</label>
-                    <label><input type="checkbox" disabled> 99%</label>
-                </div>
+                <h4 id="fichaOrigemTitulo"></h4>
 
-            </div>
+                <p id="fichaOrigemDescricao"></p>
 
+                <p>
+                    <strong>Perícias treinadas:</strong>
+                    <span id="fichaPericiasOrigem"></span>
+                </p>
 
-            <div class="ficha-historia" style="margin-top: 22px;">
-
-                <h3>INVENTÁRIO</h3>
-
-                <table class="ficha-inventario-tabela">
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th>Categoria</th>
-                            <th>Peso/Unid.</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fichaInventarioArmas">
-                        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                    </tbody>
-                </table>
+                <p id="fichaHabilidadeOrigem"></p>
 
             </div>
 
         </div>
 
 
-        <div class="ficha-coluna-dir">
+        <div>
 
             <div class="ficha-box">
 
@@ -1127,54 +1027,26 @@
             </div>
 
 
-            <div class="ficha-box">
-
-                <h3>DIAGRAMA DE ATRIBUTOS</h3>
-
-                <div class="diagrama-atributos">
-
-                    <div class="hexagono hex-agilidade">
-                        <span class="rotulo">AGILIDADE</span>
-                        <span class="valor" id="fichaHexAgilidade"></span>
-                    </div>
-
-                    <div class="hexagono hex-forca">
-                        <span class="rotulo">FORÇA</span>
-                        <span class="valor" id="fichaHexForca"></span>
-                    </div>
-
-                    <div class="hexagono hex-intelecto">
-                        <span class="rotulo">INTELECTO</span>
-                        <span class="valor" id="fichaHexIntelecto"></span>
-                    </div>
-
-                    <div class="hexagono hex-presenca">
-                        <span class="rotulo">PRESENÇA</span>
-                        <span class="valor" id="fichaHexPresenca"></span>
-                    </div>
-
-                    <div class="hexagono hex-vigor">
-                        <span class="rotulo">VIGOR</span>
-                        <span class="valor" id="fichaHexVigor"></span>
-                    </div>
-
-                    <div class="hex-centro">ATRIBUTOS</div>
-
-                </div>
-
-            </div>
-
-
             <div class="ficha-caixas-status">
 
-                <div class="caixa-status">
+                <div class="caixa-status caixa-recurso">
                     <span class="rotulo-caixa">PV</span>
-                    <span class="valor-caixa" id="fichaPV"></span>
+                    <div class="controle-recurso">
+                        <button type="button" onclick="ajustarStatus('pv', -1)">-</button>
+                        <span class="valor-caixa"><span id="fichaPVAtual"></span> / <span id="fichaPVMax"></span></span>
+                        <button type="button" onclick="ajustarStatus('pv', 1)">+</button>
+                    </div>
+                    <div class="barra-recurso"><div class="barra-recurso-preenchimento barra-pv" id="fichaPVBarra"></div></div>
                 </div>
 
-                <div class="caixa-status">
+                <div class="caixa-status caixa-recurso">
                     <span class="rotulo-caixa">PE</span>
-                    <span class="valor-caixa" id="fichaPE"></span>
+                    <div class="controle-recurso">
+                        <button type="button" onclick="ajustarStatus('pe', -1)">-</button>
+                        <span class="valor-caixa"><span id="fichaPEAtual"></span> / <span id="fichaPEMax"></span></span>
+                        <button type="button" onclick="ajustarStatus('pe', 1)">+</button>
+                    </div>
+                    <div class="barra-recurso"><div class="barra-recurso-preenchimento barra-pe" id="fichaPEBarra"></div></div>
                 </div>
 
                 <div class="caixa-status">
@@ -1182,9 +1054,34 @@
                     <span class="valor-caixa" id="fichaProtecao"></span>
                 </div>
 
-                <div class="caixa-status">
+                <div class="caixa-status caixa-recurso">
                     <span class="rotulo-caixa">SAN</span>
-                    <span class="valor-caixa" id="fichaSAN"></span>
+                    <div class="controle-recurso">
+                        <button type="button" onclick="ajustarStatus('san', -1)">-</button>
+                        <span class="valor-caixa"><span id="fichaSANAtual"></span> / <span id="fichaSANMax"></span></span>
+                        <button type="button" onclick="ajustarStatus('san', 1)">+</button>
+                    </div>
+                    <div class="barra-recurso"><div class="barra-recurso-preenchimento barra-san" id="fichaSANBarra"></div></div>
+                </div>
+
+                <div class="caixa-status">
+                    <span class="rotulo-caixa">DEFESA</span>
+                    <span class="valor-caixa" id="fichaDefesa"></span>
+                </div>
+
+                <div class="caixa-status">
+                    <span class="rotulo-caixa">ESQUIVA</span>
+                    <span class="valor-caixa" id="fichaEsquiva"></span>
+                </div>
+
+                <div class="caixa-status">
+                    <span class="rotulo-caixa">BLOQUEIO (RD)</span>
+                    <span class="valor-caixa" id="fichaBloqueio"></span>
+                </div>
+
+                <div class="caixa-status">
+                    <span class="rotulo-caixa">CONTRA-ATAQUE</span>
+                    <span class="valor-caixa" id="fichaContraAtaque"></span>
                 </div>
 
             </div>
@@ -1209,25 +1106,51 @@
 
             </div>
 
+        </div>
 
-            <div class="ficha-historia" style="margin-top: 20px;">
+    </div>
 
-                <h3>STATUS &amp; CONDIÇÕES</h3>
 
-                <div class="checkbox-linha">
-                    <label><input type="checkbox" disabled> Ferido Leve</label>
-                    <label><input type="checkbox" disabled> Ferido Grave</label>
-                    <label><input type="checkbox" disabled> Nocauteado</label>
-                    <label><input type="checkbox" disabled> Incapacitado</label>
-                    <label><input type="checkbox" disabled> Sangrando</label>
-                    <label><input type="checkbox" disabled> Queimado</label>
-                    <label><input type="checkbox" disabled> Exausto</label>
-                    <label><input type="checkbox" disabled> Envenenado</label>
-                    <label><input type="checkbox" disabled> Amarrado</label>
-                    <label><input type="checkbox" disabled> Inconsciente</label>
-                    <label><input type="checkbox" disabled> Traumatizado</label>
-                    <label><input type="checkbox" disabled> Atordoado</label>
-                </div>
+    <div class="ficha-corpo">
+
+        <div>
+
+            <div class="ficha-historia">
+
+                <h3>PROFICIÊNCIAS</h3>
+
+                <p id="fichaProficiencias"></p>
+
+            </div>
+
+
+            <div class="ficha-historia">
+
+                <h3>PERÍCIAS TREINADAS</h3>
+
+                <p id="fichaPericias"></p>
+
+            </div>
+
+        </div>
+
+
+        <div>
+
+            <div class="ficha-historia">
+
+                <h3>ARMA PRINCIPAL</h3>
+
+                <div id="fichaArmaDetalhe"></div>
+
+            </div>
+
+
+            <div class="ficha-historia">
+
+                <h3>EQUIPAMENTO</h3>
+
+                <ul id="fichaEquipamento"></ul>
 
             </div>
 
@@ -1238,50 +1161,74 @@
 
     <div class="ficha-historia">
 
-        <h3>APARÊNCIA</h3>
+        <h3>HABILIDADES &amp; RITUAIS</h3>
 
-        <p id="fichaAparencia"></p>
-
-    </div>
-
-
-    <div class="ficha-historia">
-
-        <h3>PERSONALIDADE</h3>
-
-        <p id="fichaPersonalidade"></p>
-
-    </div>
-
-
-    <div class="ficha-historia">
-
-        <h3>HISTÓRICO</h3>
-
-        <p id="fichaHistorico"></p>
+        <table class="tabela-habilidades">
+            <thead>
+                <tr>
+                    <th>Habilidade</th>
+                    <th>NEX que libera</th>
+                </tr>
+            </thead>
+            <tbody id="fichaHabilidadesTabela"></tbody>
+        </table>
 
     </div>
 
 
-    <div class="ficha-historia">
+    <div class="ficha-corpo">
 
-        <h3>OBJETIVO</h3>
+        <div>
 
-        <p id="fichaObjetivo"></p>
+            <div class="ficha-historia">
+                <h3>APARÊNCIA</h3>
+                <p id="fichaAparencia"></p>
+            </div>
 
-    </div>
+            <div class="ficha-historia">
+                <h3>PERSONALIDADE</h3>
+                <p id="fichaPersonalidade"></p>
+            </div>
 
-
-    <div class="ficha-historia">
-
-        <h3>ANOTAÇÕES</h3>
-
-        <div class="ficha-anotacoes-linhas">
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
         </div>
+
+
+        <div>
+
+            <div class="ficha-historia">
+                <h3>HISTÓRICO</h3>
+                <p id="fichaHistorico"></p>
+            </div>
+
+            <div class="ficha-historia">
+                <h3>OBJETIVO</h3>
+                <p id="fichaObjetivo"></p>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="ficha-historia">
+
+        <h3>INVENTÁRIO</h3>
+
+        <table class="ficha-inventario-tabela">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Categoria</th>
+                    <th>Peso/Unid.</th>
+                </tr>
+            </thead>
+            <tbody id="fichaInventarioArmas">
+                <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+            </tbody>
+        </table>
 
     </div>
 
@@ -1290,6 +1237,14 @@
 
         <button type="button"
                 class="botao-principal"
+                onclick="abrirModoJogo()">
+
+            🎮 MODO DE JOGO
+
+        </button>
+
+        <button type="button"
+                class="botao-secundario"
                 onclick="gerarPDF()">
 
             ⬇ BAIXAR PDF
@@ -1338,6 +1293,108 @@
 
 
 </section>
+
+
+<!-- ================================================= -->
+<!-- MODO DE JOGO                                       -->
+<!-- ================================================= -->
+
+<section id="modoJogo" class="tela">
+
+<div class="modo-jogo">
+
+    <div class="modo-jogo-topo">
+        <h1 id="jogoNome">PERSONAGEM</h1>
+        <p id="jogoClasseOrigem"></p>
+    </div>
+
+    <div class="modo-jogo-recursos">
+
+        <div class="recurso-jogo">
+            <span class="rotulo-caixa">PV</span>
+            <div class="controle-recurso">
+                <button type="button" onclick="ajustarStatus('pv', -1)">-</button>
+                <span class="valor-caixa"><span id="jogoPVAtual"></span> / <span id="jogoPVMax"></span></span>
+                <button type="button" onclick="ajustarStatus('pv', 1)">+</button>
+            </div>
+            <div class="barra-recurso"><div class="barra-recurso-preenchimento barra-pv" id="jogoPVBarra"></div></div>
+        </div>
+
+        <div class="recurso-jogo">
+            <span class="rotulo-caixa">PE</span>
+            <div class="controle-recurso">
+                <button type="button" onclick="ajustarStatus('pe', -1)">-</button>
+                <span class="valor-caixa"><span id="jogoPEAtual"></span> / <span id="jogoPEMax"></span></span>
+                <button type="button" onclick="ajustarStatus('pe', 1)">+</button>
+            </div>
+            <div class="barra-recurso"><div class="barra-recurso-preenchimento barra-pe" id="jogoPEBarra"></div></div>
+        </div>
+
+        <div class="recurso-jogo">
+            <span class="rotulo-caixa">SAN</span>
+            <div class="controle-recurso">
+                <button type="button" onclick="ajustarStatus('san', -1)">-</button>
+                <span class="valor-caixa"><span id="jogoSANAtual"></span> / <span id="jogoSANMax"></span></span>
+                <button type="button" onclick="ajustarStatus('san', 1)">+</button>
+            </div>
+            <div class="barra-recurso"><div class="barra-recurso-preenchimento barra-san" id="jogoSANBarra"></div></div>
+        </div>
+
+    </div>
+
+
+    <div class="secao-jogo">
+        <button type="button" class="secao-jogo-header" onclick="toggleSecaoJogo('secaoJogoCombate')">
+            <span>CARACTERÍSTICAS DE COMBATE</span>
+            <span class="seta">▾</span>
+        </button>
+        <div class="secao-jogo-conteudo aberta" id="secaoJogoCombate">
+            <div class="grade-jogo" id="jogoCombate"></div>
+        </div>
+    </div>
+
+
+    <div class="secao-jogo">
+        <button type="button" class="secao-jogo-header" onclick="toggleSecaoJogo('secaoJogoAtributos')">
+            <span>ATRIBUTOS</span>
+            <span class="seta">▾</span>
+        </button>
+        <div class="secao-jogo-conteudo aberta" id="secaoJogoAtributos">
+            <div class="grade-jogo" id="jogoAtributos"></div>
+        </div>
+    </div>
+
+
+    <div class="secao-jogo">
+        <button type="button" class="secao-jogo-header" onclick="toggleSecaoJogo('secaoJogoArma')">
+            <span>ARMA(S)</span>
+            <span class="seta">▾</span>
+        </button>
+        <div class="secao-jogo-conteudo aberta" id="secaoJogoArma">
+            <div id="jogoArmas"></div>
+        </div>
+    </div>
+
+
+    <div class="secao-jogo">
+        <button type="button" class="secao-jogo-header" onclick="toggleSecaoJogo('secaoJogoPericias')">
+            <span>PERÍCIAS</span>
+            <span class="seta">▾</span>
+        </button>
+        <div class="secao-jogo-conteudo aberta" id="secaoJogoPericias">
+            <div class="lista-jogo-pericias" id="jogoPericias"></div>
+        </div>
+    </div>
+
+
+    <button type="button" class="botao-secundario botao-voltar-ficha" onclick="voltarParaFicha()">
+        ← VER FICHA COMPLETA
+    </button>
+
+</div>
+
+</section>
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>

@@ -896,6 +896,61 @@ textarea {
     gap: 20px;
 }
 
+.titulo-caracteristicas h2 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 24px;
+    margin-bottom: 6px;
+}
+
+.titulo-caracteristicas .aviso-vazio {
+    color: #aaa;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.resumo-caracteristicas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.caracteristica {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px;
+    background: rgba(12,12,12,.92);
+    border: 1px solid #444;
+    text-align: center;
+}
+
+.caracteristica span {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+}
+
+.caracteristica .campo-stat {
+    width: 100%;
+    padding: 8px;
+    font-size: 22px;
+    font-family: "Cinzel", serif;
+    font-weight: bold;
+    color: var(--vermelho-claro);
+    background: #111;
+    border: 1px solid #555;
+    text-align: center;
+}
+
+.caracteristica small {
+    color: #888;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
 /* PARANORMAL */
 
 .paranormal-area {
@@ -949,29 +1004,31 @@ textarea {
 }
 
 .ficha {
-    max-width: 1200px;
+    width: 210mm;
+    max-width: 100%;
     margin: auto;
-    padding: 45px;
+    padding: 8mm;
     background: rgba(10,10,10,.95);
     color: #e5ddce;
     border: 2px solid #444;
     font-family: "Crimson Pro", serif;
+    box-sizing: border-box;
 }
 
 .ficha-topo {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 25px;
-    padding-bottom: 20px;
+    gap: 12px;
+    padding-bottom: 6px;
     border-bottom: 2px solid #444;
-    margin-bottom: 10px;
+    margin-bottom: 4px;
     text-align: center;
 }
 
 .ficha-topo-emblema {
-    width: 70px;
-    height: 70px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     border: 3px solid #444;
     display: flex;
@@ -990,7 +1047,7 @@ textarea {
 
 .ficha-header {
     text-align: center;
-    padding: 15px 0 25px;
+    padding: 4px 0 8px;
 }
 
 .ficha-header p {
@@ -1014,13 +1071,13 @@ textarea {
 .ficha-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    margin: 25px 0;
+    gap: 14px;
+    margin: 14px 0;
 }
 
 .ficha-box,
 .ficha-historia {
-    padding: 18px 22px;
+    padding: 8px 12px;
     background: transparent;
     border: 1px solid #444;
 }
@@ -1034,16 +1091,16 @@ textarea {
     font-size: 14px;
     letter-spacing: 1px;
     padding: 6px 12px;
-    margin: -18px -22px 14px -22px;
+    margin: -8px -12px 6px -12px;
 }
 
 .ficha-box p {
-    margin: 8px 0;
+    margin: 4px 0;
     color: #e5ddce;
 }
 
 .ficha-historia {
-    margin-bottom: 22px;
+    margin-bottom: 8px;
 }
 
 .ficha-historia p {
@@ -1063,7 +1120,7 @@ textarea {
 .ficha-corpo {
     display: grid;
     grid-template-columns: 1.15fr 1fr;
-    gap: 24px;
+    gap: 10px;
     align-items: start;
 }
 
@@ -1109,109 +1166,10 @@ textarea {
 
 .tabela-habilidades td {
     border-bottom: 1px solid #333;
-    padding: 6px;
+    padding: 3px 4px;
     vertical-align: top;
     color: #e5ddce;
-}
-
-/* NEX - PROGRESSO TOTAL */
-
-.ficha-nex-progresso {
-    margin-top: 18px;
-}
-
-.ficha-nex-progresso .ficha-nex-titulo {
-    background: var(--vermelho);
-    color: white;
-    font-family: "Cinzel", serif;
-    font-size: 13px;
-    letter-spacing: 1px;
-    padding: 6px 12px;
-    margin-bottom: 10px;
-}
-
-.checkbox-linha {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    padding: 6px 4px;
-}
-
-.checkbox-linha label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 12.5px;
-    color: #e5ddce;
-}
-
-.checkbox-linha input[type="checkbox"] {
-    width: 13px;
-    height: 13px;
-    accent-color: #750000;
-}
-
-/* DIAGRAMA DE ATRIBUTOS (HEXÁGONOS) */
-
-.diagrama-atributos {
-    position: relative;
-    width: 100%;
-    max-width: 340px;
-    aspect-ratio: 1 / 0.95;
-    margin: 10px auto 0;
-}
-
-.hexagono {
-    position: absolute;
-    width: 34%;
-    aspect-ratio: 1 / 1.05;
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    background: rgba(10,10,10,.95);
-    border: 2px solid #444;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-.hexagono span.rotulo {
-    font-family: "Cinzel", serif;
-    font-size: 10.5px;
-    letter-spacing: .5px;
-    color: #e5ddce;
-}
-
-.hexagono span.valor {
-    font-family: "Cinzel", serif;
-    font-size: 17px;
-    color: #750000;
-    font-weight: bold;
-}
-
-.hex-agilidade { top: 0; left: 33%; }
-.hex-forca { top: 27%; left: 0; }
-.hex-intelecto { top: 27%; left: 66%; }
-.hex-presenca { top: 54%; left: 17%; }
-.hex-vigor { top: 54%; left: 49%; }
-
-.hex-centro {
-    position: absolute;
-    top: 24%;
-    left: 30%;
-    width: 40%;
-    aspect-ratio: 1 / 1;
-    border-radius: 50%;
-    background: var(--vermelho);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: "Cinzel", serif;
-    font-size: 13px;
-    letter-spacing: 1px;
-    text-align: center;
-    padding: 10px;
+    font-size: 11.5px;
 }
 
 /* CAIXAS PV / PE / PROTEÇÃO / SAN */
@@ -1219,13 +1177,13 @@ textarea {
 .ficha-caixas-status {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-top: 20px;
+    gap: 8px;
+    margin-top: 10px;
 }
 
 .caixa-status {
     border: 1px solid #444;
-    padding: 10px 8px;
+    padding: 6px 6px;
     text-align: center;
 }
 
@@ -1245,11 +1203,59 @@ textarea {
     margin-top: 4px;
 }
 
+.caixa-recurso .valor-caixa {
+    font-size: 18px;
+    margin: 0;
+}
+
+.controle-recurso {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.controle-recurso button {
+    width: 24px;
+    height: 24px;
+    line-height: 1;
+    background: #181818;
+    color: #e5ddce;
+    border: 1px solid #555;
+    font-family: "Cinzel", serif;
+    font-size: 14px;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.controle-recurso button:hover {
+    background: var(--vermelho);
+}
+
+.barra-recurso {
+    width: 100%;
+    height: 6px;
+    background: #222;
+    margin-top: 6px;
+    overflow: hidden;
+}
+
+.barra-recurso-preenchimento {
+    height: 100%;
+    width: 100%;
+    transition: width .2s;
+}
+
+.barra-pv { background: var(--vermelho-claro); }
+.barra-pe { background: var(--dourado); }
+.barra-san { background: #8a5ac7; }
+
 .ficha-caixas-secundarias {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-top: 10px;
+    gap: 8px;
+    margin-top: 6px;
 }
 
 .caixa-secundaria {
@@ -1293,19 +1299,10 @@ textarea {
 
 .ficha-inventario-tabela td {
     border-bottom: 1px solid #333;
-    padding: 10px 6px;
+    padding: 6px 6px;
 }
 
 /* ANOTAÇÕES */
-
-.ficha-anotacoes-linhas {
-    margin-top: 8px;
-}
-
-.ficha-anotacoes-linhas div {
-    border-bottom: 1px solid #333;
-    height: 22px;
-}
 
 /* BOTÕES DE EXPORTAÇÃO */
 
@@ -1347,6 +1344,175 @@ textarea {
 .acao-recomecar button:hover {
     color: var(--dourado);
     border-color: var(--dourado);
+}
+
+/* MODO DE JOGO */
+
+.modo-jogo {
+    max-width: 700px;
+    margin: auto;
+    padding: 20px 16px 60px;
+}
+
+.modo-jogo-topo {
+    text-align: center;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #444;
+    margin-bottom: 16px;
+}
+
+.modo-jogo-topo h1 {
+    font-family: "Cinzel", serif;
+    color: var(--vermelho-claro);
+    font-size: 28px;
+    margin-bottom: 6px;
+}
+
+.modo-jogo-topo p {
+    color: #aaa;
+    font-size: 13px;
+    letter-spacing: .5px;
+}
+
+.modo-jogo-recursos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.recurso-jogo {
+    border: 1px solid #444;
+    background: rgba(12,12,12,.92);
+    padding: 10px 8px;
+    text-align: center;
+}
+
+.recurso-jogo .rotulo-caixa {
+    font-family: "Cinzel", serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #aaa;
+    display: block;
+}
+
+.recurso-jogo .valor-caixa {
+    font-size: 17px;
+    color: #e5ddce;
+    font-family: "Cinzel", serif;
+}
+
+.secao-jogo {
+    border: 1px solid #444;
+    margin-bottom: 12px;
+    background: rgba(10,10,10,.95);
+}
+
+.secao-jogo-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    background: var(--vermelho);
+    color: white;
+    font-family: "Cinzel", serif;
+    font-size: 14px;
+    letter-spacing: 1px;
+    border: none;
+    text-align: left;
+}
+
+.secao-jogo-header .seta {
+    font-size: 16px;
+}
+
+.secao-jogo-conteudo {
+    display: none;
+    padding: 16px 18px;
+}
+
+.secao-jogo-conteudo.aberta {
+    display: block;
+}
+
+.grade-jogo {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.item-jogo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #111;
+    border: 1px solid #333;
+}
+
+.item-jogo-rotulo {
+    color: #e5ddce;
+    font-size: 14px;
+}
+
+.item-jogo-rotulo small {
+    color: #888;
+}
+
+.item-jogo-valor {
+    font-family: "Cinzel", serif;
+    color: var(--vermelho-claro);
+    font-weight: bold;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.lista-jogo-pericias {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+}
+
+.carta-arma-jogo {
+    border: 1px solid #333;
+    background: #111;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+}
+
+.carta-arma-jogo:last-child {
+    margin-bottom: 0;
+}
+
+.carta-arma-jogo-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.carta-arma-jogo-topo strong {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+}
+
+.carta-arma-jogo p {
+    color: #aaa;
+    font-size: 13px;
+    margin: 4px 0 0;
+}
+
+.item-jogo-especial {
+    color: #888 !important;
+    font-style: italic;
+}
+
+.botao-voltar-ficha {
+    width: 100%;
+    margin-top: 10px;
 }
 
 /* RESPONSIVO */

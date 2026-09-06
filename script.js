@@ -81,24 +81,204 @@ const abreviacaoAtributo = {
 let armasSelecionadas = [];
 let nivelPersonagem = 1;
 
-// Quantas armas o personagem pode carregar: igual à Força, até um teto de 5
-function limiteArmas() {
-    return Math.min(atributos.forca, 5);
+// Valores manuais que sobrescrevem a sugestão automática (null = usar sugestão)
+let statsManuais = {
+    pv: null,
+    pe: null,
+    protecao: null,
+    san: null,
+    defesa: null,
+    esquiva: null,
+    bloqueio: null,
+    contraAtaque: null
+};
+
+function statManualAlterado(campo, valor) {
+    statsManuais[campo] = valor;
+    salvarProgresso();
 }
 
-// Tabela de desbloqueio: Nível do personagem -> Categoria máxima de arma liberada
-function categoriaLiberada() {
-    if (nivelPersonagem >= 11) return 4;
-    if (nivelPersonagem >= 7) return 3;
-    if (nivelPersonagem >= 4) return 2;
-    if (nivelPersonagem >= 2) return 1;
-    return 0;
+// PV / PE / SAN atuais, usados durante a partida (null = ainda não inicializado, usa o máximo)
+let statusAtual = {
+    pv: null,
+    pe: null,
+    san: null
+};
+
+const sufixoStatus = { pv: "PV", pe: "PE", san: "SAN" };
+
+// Recalcula e redesenha a barra + números de um recurso (PV, PE ou SAN)
+function atualizarBarraStatus(campo) {
+    const sufixo = sufixoStatus[campo];
+    if (!sufixo) return;
+
+    const personagem = obterPersonagem();
+    const max = personagem[campo];
+
+    if (statusAtual[campo] === null) {
+        statusAtual[campo] = max;
+    }
+
+    const atual = Math.max(0, Math.min(max, statusAtual[campo]));
+    statusAtual[campo] = atual;
+
+    ["ficha", "jogo"].forEach(prefixo => {
+        const elAtual = document.getElementById(`${prefixo}${sufixo}Atual`);
+        const elMax = document.getElementById(`${prefixo}${sufixo}Max`);
+        const elBarra = document.getElementById(`${prefixo}${sufixo}Barra`);
+
+        if (elAtual) elAtual.textContent = atual;
+        if (elMax) elMax.textContent = max;
+        if (elBarra) elBarra.style.width = max > 0 ? `${(atual / max) * 100}%` : "0%";
+    });
 }
 
-// Nível mínimo de personagem necessário para liberar uma categoria de arma (0-4)
-function nivelMinimoParaCategoria(categoria) {
-    const tabela = { 0: 1, 1: 2, 2: 4, 3: 7, 4: 11 };
-    return tabela[categoria];
+// Botões +/- da ficha final, para acompanhar dano/gasto durante a sessão
+function ajustarStatus(campo, delta) {
+    if (statusAtual[campo] === null) {
+        statusAtual[campo] = obterPersonagem()[campo];
+    }
+
+    statusAtual[campo] += delta;
+    atualizarBarraStatus(campo);
+    salvarProgresso();
+}
+
+// ============================================================
+// SALVAMENTO AUTOMÁTICO (localStorage)
+// ============================================================
+
+const CHAVE_PROGRESSO = "imperio_progresso";
+
+function salvarProgresso() {
+    try {
+        const estado = {
+            etapaAtual,
+            atributos: { ...atributos },
+            pontosDisponiveis,
+            categoriaSelecionada,
+            classeNome: classeSelecionada ? classeSelecionada.nome : null,
+            origemNome: origemSelecionada ? origemSelecionada.nome : null,
+            periciasSelecionadas: [...periciasSelecionadas],
+            armasNomes: armasSelecionadas.map(arma => arma.nome),
+            protecaoNome: protecaoSelecionada ? protecaoSelecionada.nome : null,
+            escudoEquipado,
+            nivelPersonagem,
+            nexPersonagem,
+            statsManuais: { ...statsManuais },
+            statusAtual: { ...statusAtual },
+            respostaParanormal: document.getElementById("respostaEle")?.dataset.resposta || null,
+            campos: {
+                personagem: document.getElementById("personagem")?.value || "",
+                jogador: document.getElementById("jogador")?.value || "",
+                aparencia: document.getElementById("aparencia")?.value || "",
+                personalidade: document.getElementById("personalidade")?.value || "",
+                historico: document.getElementById("historico")?.value || "",
+                objetivo: document.getElementById("objetivo")?.value || ""
+            },
+            finalizado: document.getElementById("fichaFinal")?.classList.contains("ativa") || false
+        };
+
+        localStorage.setItem(CHAVE_PROGRESSO, JSON.stringify(estado));
+    } catch (erro) {
+        console.error("Não foi possível salvar o progresso automaticamente:", erro);
+    }
+}
+
+function limparProgressoSalvo() {
+    try {
+        localStorage.removeItem(CHAVE_PROGRESSO);
+    } catch (erro) {
+        console.error(erro);
+    }
+}
+
+function restaurarProgresso() {
+    let salvo = null;
+
+    try {
+        salvo = JSON.parse(localStorage.getItem(CHAVE_PROGRESSO));
+    } catch (erro) {
+        salvo = null;
+    }
+
+    if (!salvo) return;
+
+    const nomeSalvo = salvo.campos?.personagem;
+    const continuar = confirm(
+        `Encontramos um personagem salvo automaticamente${nomeSalvo ? ` ("${nomeSalvo}")` : ""}. Deseja continuar de onde parou?`
+    );
+
+    if (!continuar) {
+        limparProgressoSalvo();
+        return;
+    }
+
+    atributos = { ...atributos, ...(salvo.atributos || {}) };
+    pontosDisponiveis = typeof salvo.pontosDisponiveis === "number" ? salvo.pontosDisponiveis : pontosDisponiveis;
+
+    Object.keys(atributos).forEach(nome => {
+        const campo = document.getElementById(nome);
+        if (campo) campo.textContent = atributos[nome];
+    });
+
+    const pontosEl = document.getElementById("pontosDisponiveis");
+    if (pontosEl) pontosEl.textContent = pontosDisponiveis;
+    atualizarEfeitosDeAtributo();
+
+    categoriaSelecionada = salvo.categoriaSelecionada || "";
+
+    if (categoriaSelecionada && classes[categoriaSelecionada]) {
+        classeSelecionada = classes[categoriaSelecionada].find(c => c.nome === salvo.classeNome) || null;
+    }
+
+    origemSelecionada = origens.find(o => o.nome === salvo.origemNome) || null;
+
+    periciasSelecionadas = Array.isArray(salvo.periciasSelecionadas) ? salvo.periciasSelecionadas : [];
+
+    armasSelecionadas = Array.isArray(salvo.armasNomes)
+        ? salvo.armasNomes.map(nome => listaDeArmas.find(a => a.nome === nome)).filter(Boolean)
+        : [];
+
+    protecaoSelecionada = salvo.protecaoNome
+        ? listaDeProtecoes.find(p => p.nome === salvo.protecaoNome) || null
+        : null;
+    escudoEquipado = !!salvo.escudoEquipado;
+
+    nivelPersonagem = salvo.nivelPersonagem || 1;
+    nexPersonagem = typeof salvo.nexPersonagem === "number" ? salvo.nexPersonagem : 0;
+    statsManuais = { ...statsManuais, ...(salvo.statsManuais || {}) };
+    statusAtual = { ...statusAtual, ...(salvo.statusAtual || {}) };
+
+    const nivelInput = document.getElementById("nivelPersonagem");
+    if (nivelInput) nivelInput.value = nivelPersonagem;
+
+    const nexInput = document.getElementById("nexPersonagem");
+    if (nexInput) nexInput.value = nexPersonagem;
+
+    if (salvo.campos) {
+        Object.entries(salvo.campos).forEach(([id, valor]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = valor;
+        });
+    }
+
+    if (salvo.respostaParanormal) {
+        responderEle(salvo.respostaParanormal);
+    }
+
+    if (salvo.finalizado) {
+        finalizarFicha();
+    } else {
+        mudarEtapa(salvo.etapaAtual || 1);
+    }
+}
+
+// Verifica se uma perícia está treinada (escolhida ou concedida de graça pela origem)
+function estaTreinado(nomePericia) {
+    if (periciasSelecionadas.includes(nomePericia)) return true;
+    if (origemSelecionada && origemSelecionada.pericias.includes(nomePericia)) return true;
+    return false;
 }
 
 function alterarNivelPersonagem() {
@@ -111,13 +291,31 @@ function alterarNivelPersonagem() {
 
     campo.value = valor;
     nivelPersonagem = valor;
+    salvarProgresso();
+}
 
-    const efeito = document.getElementById("nivelEfeito");
-    if (efeito) {
-        efeito.textContent = `Libera armas de Categoria ${categoriaLiberada()}`;
-    }
+let nexPersonagem = 0;
 
-    mostrarArmas();
+function alterarNex() {
+    const campo = document.getElementById("nexPersonagem");
+    if (!campo) return;
+
+    let valor = parseInt(campo.value, 10);
+    if (isNaN(valor)) valor = 0;
+    valor = Math.max(0, Math.min(99, valor));
+
+    campo.value = valor;
+    nexPersonagem = valor;
+
+    atualizarCaracteristicas();
+    salvarProgresso();
+}
+
+// Quantos "novos níveis de exposição" o personagem já alcançou (0 = ainda no NEX inicial de 5%)
+function incrementosNex() {
+    if (!classeSelecionada || !Array.isArray(classeSelecionada.progressao)) return 0;
+
+    return classeSelecionada.progressao.filter(p => p.nex <= nexPersonagem).length;
 }
 
 const listaDeArmas = [
@@ -138,12 +336,12 @@ const listaDeArmas = [
     { nome: "Fukiya", categoria: "Distância", nivel: 2, proficiencia: "Distância", dano: "1d4", pericia: "Pontaria", alcance: "Médio (à distância)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Dardos podem ser preparados com toxinas." },
     { nome: "Shuriken Rituais", categoria: "Distância", nivel: 3, proficiencia: "Distância", dano: "1d4", pericia: "Pontaria", alcance: "Curto (arremesso)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "+5 de dano contra entidades paranormais." },
     { nome: "Teppo", categoria: "Distância", nivel: 3, proficiencia: "Distância", dano: "1d10", pericia: "Pontaria", alcance: "Médio (à distância)", maos: "Duas mãos", peso: "Pesado", tamanho: "Grande", espaco: 4, especial: "Recarga lenta: dispara uma vez a cada duas rodadas." },
-    { nome: "Kunai", categoria: "Distância", nivel: 1, proficiencia: "Simples", dano: "1d4", pericia: "Pontaria", alcance: "Curto (arremesso)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Também serve como ferramenta de escalada." },
+    { nome: "Kunai", categoria: "Distância", nivel: 1, proficiencia: "Simples", dano: "1d4", pericia: "Pontaria", alcance: "Curto (arremesso)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Também funciona como faca de combate corpo a corpo (teste de Luta em vez de Pontaria) e como ferramenta de escalada." },
     { nome: "Kanabo", categoria: "Impacto", nivel: 3, proficiencia: "Marcial", dano: "1d12", pericia: "Luta", alcance: "Médio", maos: "Duas mãos", peso: "Pesado", tamanho: "Grande", espaco: 4, especial: "Ignora parte da proteção de armaduras leves." },
     { nome: "Jitte", categoria: "Impacto", nivel: 1, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode ser usada para desarmar o oponente." },
     { nome: "Tessen", categoria: "Impacto", nivel: 2, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Discreta; passa despercebida em ambientes formais." },
     { nome: "Kusari-fundo", categoria: "Distância", nivel: 4, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Médio (com corrente)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode enrolar e imobilizar um membro do alvo, mesmo a curta distância." },
-    { nome: "Ancinho de Camponês", categoria: "Impacto", nivel: 0, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Médio", maos: "Duas mãos", peso: "Médio", tamanho: "Média", espaco: 2, especial: "Arma improvisada; fácil de conseguir em qualquer vila." },
+    { nome: "Tekkō", categoria: "Impacto", nivel: 0, proficiencia: "Simples", dano: "2xFOR", pericia: "Luta", alcance: "Curto", maos: "Uma ou duas mãos", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Soqueiras de ferro; o dano é igual ao dobro da sua Força." },
     { nome: "Nunchako", categoria: "Impacto", nivel: 2, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode ser usado para bloquear ataques corpo a corpo com facilidade." },
     { nome: "Sino de Prata Amaldiçoado", categoria: "Impacto", nivel: 3, proficiencia: "Ritual", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "O som do impacto perturba espíritos próximos." },
     { nome: "Corrente de Selamento", categoria: "Impacto", nivel: 4, proficiencia: "Ritual", dano: "1d6", pericia: "Luta", alcance: "Médio (com corrente)", maos: "Uma mão", peso: "Leve", tamanho: "Média", espaco: 2, especial: "Pode prender uma entidade em vez de causar dano." },
@@ -153,6 +351,107 @@ const listaDeArmas = [
     { nome: "Sino-Faca Yamabushi", categoria: "Corte", nivel: 1, proficiencia: "Ritual", dano: "1d8", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "O guizo embutido dá vantagem em Intimidação após acertar." }
 ];
 
+// Proteções: só uma pode ser equipada por vez (não acumulam entre si)
+const listaDeProtecoes = [
+    { nome: "Proteção Leve", bonusDefesa: 5, espaco: 2, especial: null },
+    { nome: "Proteção Pesada", bonusDefesa: 10, espaco: 3, especial: "-2 em testes de Acrobacia e Furtividade enquanto equipada." }
+];
+
+// Escudo: acumula com a proteção, mas só concede o bônus se estiver empunhado
+const escudo = { nome: "Escudo", bonusDefesa: 2, espaco: 1, especial: "Só concede o bônus de Defesa se estiver empunhado em uma das mãos." };
+
+let protecaoSelecionada = null;
+let escudoEquipado = false;
+
+// Calcula o texto de dano de uma arma, resolvendo fórmulas dinâmicas
+// (ex.: Tekkō causa o dobro da Força, em vez de um dado fixo)
+function calcularDano(arma) {
+    if (arma.dano === "2xFOR") {
+        return `${atributos.forca * 2} (2× Força)`;
+    }
+
+    return arma.dano;
+}
+
+// Capacidade de espaço no inventário: 2 se Força for 0, senão Força x 5.
+// Vale para armas, proteção e escudo juntos.
+function capacidadeInventario() {
+    return atributos.forca === 0 ? 2 : atributos.forca * 5;
+}
+
+// Quantos "slots" de espaço já estão ocupados (armas + proteção + escudo)
+function espacoUsado() {
+    let total = armasSelecionadas.reduce((soma, arma) => soma + arma.espaco, 0);
+
+    if (protecaoSelecionada) total += protecaoSelecionada.espaco;
+    if (escudoEquipado) total += escudo.espaco;
+
+    return total;
+}
+
+// Texto/valor da proteção atualmente equipada, usado como sugestão do stat "Proteção"
+function protecaoEquipadaTexto() {
+    return protecaoSelecionada ? protecaoSelecionada.bonusDefesa : 0;
+}
+
+// Penalidade de -2 em Acrobacia/Furtividade ao usar Proteção Pesada
+function penalidadeArmaduraPesada(nomePericia) {
+    const afetadas = ["Acrobacia", "Furtividade"];
+
+    if (protecaoSelecionada?.nome === "Proteção Pesada" && afetadas.includes(nomePericia)) {
+        return -2;
+    }
+
+    return 0;
+}
+
+function toggleProtecao(nome) {
+    const protecao = listaDeProtecoes.find(p => p.nome === nome);
+    if (!protecao) return;
+
+    const jaEquipada = protecaoSelecionada?.nome === nome;
+
+    if (jaEquipada) {
+        protecaoSelecionada = null;
+    } else {
+        const espacoSemProtecaoAtual = espacoUsado() - (protecaoSelecionada ? protecaoSelecionada.espaco : 0);
+
+        if (espacoSemProtecaoAtual + protecao.espaco > capacidadeInventario()) {
+            alert(
+                `Seu inventário comporta ${capacidadeInventario()} espaço(s) no total ` +
+                `(baseado na sua Força: ${atributos.forca}). Essa proteção ocupa ${protecao.espaco} espaço(s).`
+            );
+            return;
+        }
+
+        protecaoSelecionada = protecao;
+    }
+
+    mostrarArmas();
+    atualizarCaracteristicas();
+    salvarProgresso();
+}
+
+function toggleEscudo() {
+    if (escudoEquipado) {
+        escudoEquipado = false;
+    } else {
+        if (espacoUsado() + escudo.espaco > capacidadeInventario()) {
+            alert(
+                `Seu inventário comporta ${capacidadeInventario()} espaço(s) no total ` +
+                `(baseado na sua Força: ${atributos.forca}). O escudo ocupa ${escudo.espaco} espaço(s).`
+            );
+            return;
+        }
+
+        escudoEquipado = true;
+    }
+
+    mostrarArmas();
+    atualizarCaracteristicas();
+    salvarProgresso();
+}
+
 function toggleArma(nome) {
     const arma = listaDeArmas.find(a => a.nome === nome);
     if (!arma) return;
@@ -161,28 +460,21 @@ function toggleArma(nome) {
 
     if (jaSelecionada) {
         armasSelecionadas = armasSelecionadas.filter(a => a.nome !== nome);
-        mostrarArmas();
-        return;
+    } else {
+        if (espacoUsado() + arma.espaco > capacidadeInventario()) {
+            alert(
+                `Seu inventário comporta ${capacidadeInventario()} espaço(s) no total ` +
+                `(baseado na sua Força: ${atributos.forca}). Essa arma ocupa ${arma.espaco} espaço(s), ` +
+                `e você já está usando ${espacoUsado()} de ${capacidadeInventario()}.`
+            );
+            return;
+        }
+
+        armasSelecionadas.push(arma);
     }
 
-    if (arma.nivel > categoriaLiberada()) {
-        alert(
-            `Essa arma exige Categoria ${arma.nivel}, liberada a partir do Nível ${nivelMinimoParaCategoria(arma.nivel)}. ` +
-            `Seu personagem está no Nível ${nivelPersonagem}.`
-        );
-        return;
-    }
-
-    if (armasSelecionadas.length >= limiteArmas()) {
-        alert(
-            `Seu personagem só consegue carregar ${limiteArmas()} arma(s) de uma vez ` +
-            `(limite baseado na Força, até o máximo de 5).`
-        );
-        return;
-    }
-
-    armasSelecionadas.push(arma);
     mostrarArmas();
+    salvarProgresso();
 }
 
 function mostrarArmas() {
@@ -190,14 +482,95 @@ function mostrarArmas() {
     const lista = document.getElementById("listaArmas");
     if (!lista) return;
 
-    const limite = limiteArmas();
+    const capacidade = capacidadeInventario();
+    const usado = espacoUsado();
 
     if (resumo) {
         resumo.innerHTML = `
             <div class="pontos-box">
-                <p>ARMAS CARREGADAS</p>
-                <strong>${armasSelecionadas.length} / ${limite}</strong>
-                <small>Limite pela Força (${atributos.forca}), até o máximo de 5 · Categorias liberadas: 0 até ${categoriaLiberada()}</small>
+                <p>ESPAÇO DE INVENTÁRIO</p>
+                <strong>${usado} / ${capacidade}</strong>
+                <small>Capacidade pela Força (${atributos.forca}) — armas, proteção e escudo dividem o mesmo espaço</small>
+            </div>
+        `;
+    }
+
+    const protecoesEl = document.getElementById("listaProtecoes");
+    if (protecoesEl) {
+        const itensProtecao = listaDeProtecoes.map(protecao => {
+            const selecionada = protecaoSelecionada?.nome === protecao.nome;
+            const semEspaco = !selecionada && (usado + protecao.espaco > capacidade);
+
+            return `
+                <label class="arma-item ${selecionada ? "selecionada" : ""} ${semEspaco ? "bloqueada" : ""}">
+
+                    <input type="checkbox"
+                           ${selecionada ? "checked" : ""}
+                           ${semEspaco ? "disabled" : ""}
+                           onchange="toggleProtecao('${protecao.nome}')">
+
+                    <span class="arma-check-indicador"></span>
+
+                    <div class="arma-topo">
+                        <h4 class="arma-nome">${protecao.nome}</h4>
+                        <span class="arma-dano-badge">+${protecao.bonusDefesa} Defesa</span>
+                    </div>
+
+                    <div class="arma-specs">
+                        <span><strong>Espaço</strong> ${protecao.espaco} slot${protecao.espaco === 1 ? "" : "s"}</span>
+                    </div>
+
+                    ${protecao.especial ? `<p class="arma-especial">${protecao.especial}</p>` : ""}
+                    ${semEspaco ? `<p class="arma-motivo">Sem espaço (precisa de ${protecao.espaco}, restam ${capacidade - usado})</p>` : ""}
+
+                </label>
+            `;
+        }).join("");
+
+        const semEspacoEscudo = !escudoEquipado && (usado + escudo.espaco > capacidade);
+
+        const itemEscudo = `
+            <label class="arma-item ${escudoEquipado ? "selecionada" : ""} ${semEspacoEscudo ? "bloqueada" : ""}">
+
+                <input type="checkbox"
+                       ${escudoEquipado ? "checked" : ""}
+                       ${semEspacoEscudo ? "disabled" : ""}
+                       onchange="toggleEscudo()">
+
+                <span class="arma-check-indicador"></span>
+
+                <div class="arma-topo">
+                    <h4 class="arma-nome">${escudo.nome}</h4>
+                    <span class="arma-dano-badge">+${escudo.bonusDefesa} Defesa</span>
+                </div>
+
+                <div class="arma-specs">
+                    <span><strong>Espaço</strong> ${escudo.espaco} slot</span>
+                </div>
+
+                <p class="arma-especial">${escudo.especial}</p>
+                ${semEspacoEscudo ? `<p class="arma-motivo">Sem espaço (precisa de ${escudo.espaco}, restam ${capacidade - usado})</p>` : ""}
+
+            </label>
+        `;
+
+        protecoesEl.innerHTML = `
+            <div class="grupo-armas">
+                <div class="grupo-armas-header">
+                    <h3>Proteção <small>(escolha só uma)</small></h3>
+                </div>
+                <div class="grupo-armas-lista">
+                    ${itensProtecao}
+                </div>
+            </div>
+
+            <div class="grupo-armas">
+                <div class="grupo-armas-header">
+                    <h3>Escudo <small>(acumula com a proteção)</small></h3>
+                </div>
+                <div class="grupo-armas-lista">
+                    ${itemEscudo}
+                </div>
             </div>
         `;
     }
@@ -210,23 +583,14 @@ function mostrarArmas() {
 
         const itensHTML = armasDaCategoria.map(arma => {
             const selecionada = armasSelecionadas.some(a => a.nome === arma.nome);
-            const categoriaBloqueada = arma.nivel > categoriaLiberada();
-            const limiteAtingido = !selecionada && armasSelecionadas.length >= limite;
-            const bloqueada = categoriaBloqueada || limiteAtingido;
-
-            let motivo = "";
-            if (categoriaBloqueada) {
-                motivo = `Requer Nível ${nivelMinimoParaCategoria(arma.nivel)}+`;
-            } else if (limiteAtingido) {
-                motivo = "Limite de armas carregadas atingido";
-            }
+            const semEspaco = !selecionada && (usado + arma.espaco > capacidade);
 
             return `
-                <label class="arma-item ${selecionada ? "selecionada" : ""} ${bloqueada ? "bloqueada" : ""}">
+                <label class="arma-item ${selecionada ? "selecionada" : ""} ${semEspaco ? "bloqueada" : ""}">
 
                     <input type="checkbox"
                            ${selecionada ? "checked" : ""}
-                           ${bloqueada ? "disabled" : ""}
+                           ${semEspaco ? "disabled" : ""}
                            onchange="toggleArma('${arma.nome}')">
 
                     <span class="arma-check-indicador"></span>
@@ -235,7 +599,7 @@ function mostrarArmas() {
 
                     <div class="arma-topo">
                         <h4 class="arma-nome">${arma.nome}</h4>
-                        <span class="arma-dano-badge">${arma.dano}</span>
+                        <span class="arma-dano-badge">${calcularDano(arma)}</span>
                     </div>
 
                     <div class="arma-specs">
@@ -250,7 +614,7 @@ function mostrarArmas() {
 
                     <p class="arma-especial">${arma.especial}</p>
 
-                    ${bloqueada ? `<p class="arma-motivo">${motivo}</p>` : ""}
+                    ${semEspaco ? `<p class="arma-motivo">Sem espaço (precisa de ${arma.espaco}, restam ${capacidade - usado})</p>` : ""}
 
                 </label>
             `;
@@ -270,49 +634,6 @@ function mostrarArmas() {
     }).join("");
 }
 
-// Limite total de perícias treinadas, de acordo com a classe escolhida
-function limitePericias() {
-    if (!categoriaSelecionada || !(categoriaSelecionada in periciasBase)) {
-        return 0;
-    }
-
-    const limiteMaximoGeral = 5;
-
-    return Math.min(
-        periciasBase[categoriaSelecionada] + atributos.intelecto,
-        limiteMaximoGeral
-    );
-}
-
-// Quantas perícias já treinadas usam um determinado atributo
-function contarPericiasPorAtributo(atributo) {
-    return periciasSelecionadas.filter(nome => {
-        const pericia = listaDePericias.find(p => p.nome === nome);
-        return pericia && pericia.atributo === atributo;
-    }).length;
-}
-
-// Remove seleções que não são mais válidas (ex.: classe ou atributos mudaram)
-function sanearPericias() {
-    const limite = limitePericias();
-
-    periciasSelecionadas = periciasSelecionadas.filter((nome, indice, array) => {
-        if (indice >= limite) return false;
-
-        const pericia = listaDePericias.find(p => p.nome === nome);
-        if (!pericia) return false;
-
-        const jaContadas = array
-            .slice(0, indice)
-            .filter(n => {
-                const p = listaDePericias.find(item => item.nome === n);
-                return p && p.atributo === pericia.atributo;
-            }).length;
-
-        return jaContadas < atributos[pericia.atributo];
-    });
-}
-
 function togglePericia(nome) {
     const pericia = listaDePericias.find(p => p.nome === nome);
     if (!pericia) return;
@@ -321,30 +642,12 @@ function togglePericia(nome) {
 
     if (jaSelecionada) {
         periciasSelecionadas = periciasSelecionadas.filter(n => n !== nome);
-        mostrarPericias();
-        return;
+    } else {
+        periciasSelecionadas.push(nome);
     }
 
-    const limite = limitePericias();
-
-    if (periciasSelecionadas.length >= limite) {
-        alert("Você já treinou o número máximo de perícias permitido pela sua classe.");
-        return;
-    }
-
-    const usadasDoAtributo = contarPericiasPorAtributo(pericia.atributo);
-
-    if (usadasDoAtributo >= atributos[pericia.atributo]) {
-        alert(
-            `Você só pode treinar até ${atributos[pericia.atributo]} ` +
-            `perícia(s) de ${abreviacaoAtributo[pericia.atributo]}, ` +
-            "de acordo com o valor desse atributo."
-        );
-        return;
-    }
-
-    periciasSelecionadas.push(nome);
     mostrarPericias();
+    salvarProgresso();
 }
 
 // Texto combinando as perícias grátis da origem com as escolhidas na etapa 5
@@ -361,15 +664,13 @@ function textoPericias() {
 
         if (!pericia) return nome;
 
-        const bonus = atributos[pericia.atributo] * 5;
+        const bonus = 5 + penalidadeArmaduraPesada(nome);
 
-        return `${nome} (${abreviacaoAtributo[pericia.atributo]}, +${bonus})`;
+        return `${nome} (${abreviacaoAtributo[pericia.atributo]}, ${bonus >= 0 ? "+" : ""}${bonus})`;
     }).join(", ");
 }
 
 function mostrarPericias() {
-    sanearPericias();
-
     const resumo = document.getElementById("resumoPericias");
     const lista = document.getElementById("listaPericias");
 
@@ -388,14 +689,12 @@ function mostrarPericias() {
         return;
     }
 
-    const limite = limitePericias();
-
     if (resumo) {
         resumo.innerHTML = `
             <div class="pontos-box">
                 <p>PERÍCIAS TREINADAS</p>
-                <strong>${periciasSelecionadas.length} / ${limite}</strong>
-                <small>Limite da classe: ${periciasBase[categoriaSelecionada]} + Intelecto (${atributos.intelecto}) — teto máximo de 5</small>
+                <strong>${periciasSelecionadas.length}</strong>
+                <small>Sem limite — treine quantas perícias quiser</small>
             </div>
         `;
     }
@@ -412,31 +711,18 @@ function mostrarPericias() {
 
     lista.innerHTML = ordemAtributos.map(atributo => {
         const valorAtributo = atributos[atributo];
-        const usadasDoAtributo = contarPericiasPorAtributo(atributo);
 
         const itensHTML = listaDePericias
             .filter(pericia => pericia.atributo === atributo)
             .map(pericia => {
                 const selecionada = periciasSelecionadas.includes(pericia.nome);
-                const bonus = selecionada ? valorAtributo * 5 : 0;
-
-                const limiteAtributoAtingido = usadasDoAtributo >= valorAtributo;
-                const limiteTotalAtingido = periciasSelecionadas.length >= limite;
-                const bloqueada = !selecionada && (limiteTotalAtingido || limiteAtributoAtingido);
-
-                let motivo = "";
-                if (bloqueada) {
-                    motivo = limiteAtributoAtingido
-                        ? "Atributo cheio"
-                        : "Limite da classe atingido";
-                }
+                const bonus = selecionada ? 5 + penalidadeArmaduraPesada(pericia.nome) : 0;
 
                 return `
-                    <label class="pericia-item ${selecionada ? "selecionada" : ""} ${bloqueada ? "bloqueada" : ""}">
+                    <label class="pericia-item ${selecionada ? "selecionada" : ""}">
 
                         <input type="checkbox"
                                ${selecionada ? "checked" : ""}
-                               ${bloqueada ? "disabled" : ""}
                                onchange="togglePericia('${pericia.nome}')">
 
                         <span class="pericia-check"></span>
@@ -445,10 +731,9 @@ function mostrarPericias() {
                             <span class="pericia-nome">
                                 ${pericia.nome}${pericia.somenteTreinada ? "*" : ""}
                             </span>
-                            ${bloqueada ? `<span class="pericia-motivo">${motivo}</span>` : ""}
                         </span>
 
-                        <span class="pericia-bonus">+${bonus}</span>
+                        <span class="pericia-bonus">${bonus >= 0 ? "+" : ""}${bonus}</span>
 
                     </label>
                 `;
@@ -460,7 +745,7 @@ function mostrarPericias() {
 
                 <div class="grupo-pericias-header">
                     <h3>${nomesAtributo[atributo]} <span class="grupo-abrev">(${abreviacaoAtributo[atributo]})</span></h3>
-                    <span class="grupo-contador">${usadasDoAtributo} / ${valorAtributo} treinadas</span>
+                    <span class="grupo-contador">Atributo ${valorAtributo}</span>
                 </div>
 
                 <div class="grupo-pericias-lista">
@@ -757,9 +1042,9 @@ const classes = {
     combatente: [
         {
             nome: "Samurai", foco: "Katana, disciplina e honra.",
-            descricao: "O Samurai é a lâmina viva de um juramento. Treinado desde a infância na arte da espada e no código de honra que rege sua existência, ele enfrenta o horror não apenas com aço, mas com uma disciplina inabalável que recusa a desonra da retirada. Onde outros hesitam, o Samurai avança — porque hesitar seria trair tudo o que jurou defender. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta e Fortitude, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Isamu Takagawa, Kaito Onodera e Yuto Shibata.",
-            pv: 24, pvNex: 5, pe: 2, peNex: 2, san: 12, sanNex: 3,
-            proficiencias: "Armas simples, armas marciais (incluindo katana e wakizashi) e proteções pesadas, como armaduras completas de lamelas.",
+            descricao: "O Samurai é a lâmina viva de um juramento. Treinado desde a infância na arte da espada e no código de honra que rege sua existência, ele enfrenta o horror não apenas com aço, mas com uma disciplina inabalável que recusa a desonra da retirada. Onde outros hesitam, o Samurai avança — porque hesitar seria trair tudo o que jurou defender. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Isamu Takagawa, Kaito Onodera e Yuto Shibata.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Honra de Aço", "Espada do Império", "Disciplina Suprema", "Corte Decisivo"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -786,9 +1071,9 @@ const classes = {
         },
         {
             nome: "Ronin", foco: "Sobrevivência e combate independente.",
-            descricao: "Sem clã, sem mestre e sem rede de apoio, o Ronin aprendeu a transformar o abandono em vantagem. Ele luta de forma imprevisível, adaptando-se ao inimigo à sua frente em vez de seguir uma escola rígida de combate, e sobrevive onde guerreiros mais tradicionais fracassariam por pura teimosia e instinto afiado. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta e Reflexos, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Ren Takagawa, Goro Kuronuma e Haru Toyotomi Jr.",
-            pv: 23, pvNex: 5, pe: 3, peNex: 2, san: 13, sanNex: 3,
-            proficiencias: "Armas simples, armas marciais e proteções leves, priorizando mobilidade sobre proteção total.",
+            descricao: "Sem clã, sem mestre e sem rede de apoio, o Ronin aprendeu a transformar o abandono em vantagem. Ele luta de forma imprevisível, adaptando-se ao inimigo à sua frente em vez de seguir uma escola rígida de combate, e sobrevive onde guerreiros mais tradicionais fracassariam por pura teimosia e instinto afiado. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Ren Takagawa, Goro Kuronuma e Haru Toyotomi Jr.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Caminho Solitário", "Sobrevivente Errante", "Determinação Sem Mestre", "Golpe Adaptativo"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -815,9 +1100,9 @@ const classes = {
         },
         {
             nome: "Ashigaru", foco: "Formação militar e resistência.",
-            descricao: "O Ashigaru é o soldado forjado em campanhas, treinado para suportar o caos da guerra e lutar em formação ao lado de seus companheiros. Sua força não está em golpes espetaculares, mas na resistência bruta de quem já sobreviveu a batalhas que quebraram guerreiros mais talentosos. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta e Fortitude, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Nozomi Kanzaki, Kaito Fujimori e Nao Shibata.",
-            pv: 25, pvNex: 5, pe: 2, peNex: 2, san: 10, sanNex: 2,
-            proficiencias: "Armas simples, lanças de haste longa e proteções médias, como couraças reforçadas.",
+            descricao: "O Ashigaru é o soldado forjado em campanhas, treinado para suportar o caos da guerra e lutar em formação ao lado de seus companheiros. Sua força não está em golpes espetaculares, mas na resistência bruta de quem já sobreviveu a batalhas que quebraram guerreiros mais talentosos. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Nozomi Kanzaki, Kaito Fujimori e Nao Shibata.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Formação de Batalha", "Disciplina Militar", "Resistência de Campanha", "Linha de Frente"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -844,9 +1129,9 @@ const classes = {
         },
         {
             nome: "Yari no Senshi", foco: "Alcance e controle.",
-            descricao: "Mestre da lança, o Yari no Senshi domina o espaço ao seu redor como ninguém, mantendo inimigos à distância e ditando o ritmo do combate. Cada movimento é calculado para negar ao adversário a chance de se aproximar o suficiente para revidar. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta e Reflexos, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Yui Sakaguchi, Kaito Kuronuma e Nao Kuronuma.",
-            pv: 22, pvNex: 5, pe: 3, peNex: 2, san: 11, sanNex: 2,
-            proficiencias: "Armas simples, lanças de diferentes comprimentos e proteções médias.",
+            descricao: "Mestre da lança, o Yari no Senshi domina o espaço ao seu redor como ninguém, mantendo inimigos à distância e ditando o ritmo do combate. Cada movimento é calculado para negar ao adversário a chance de se aproximar o suficiente para revidar. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Yui Sakaguchi, Kaito Kuronuma e Nao Kuronuma.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Alcance Superior", "Parede de Lanças", "Controle de Distância", "Investida Certeira"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -873,9 +1158,9 @@ const classes = {
         },
         {
             nome: "Kyudoka", foco: "Arco e precisão.",
-            descricao: "O Kyudoka pratica o caminho do arco como uma forma de meditação letal, onde respiração, postura e foco se fundem em um único disparo perfeito. Ele prefere resolver o conflito antes que o inimigo sequer perceba seu risco, atingindo alvos que a maioria julgaria impossíveis. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Pontaria e Percepção, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Nozomi Shibata, Hana Toyotomi Jr. e Kenji Ibaraki.",
-            pv: 20, pvNex: 4, pe: 4, peNex: 2, san: 12, sanNex: 3,
-            proficiencias: "Armas simples, arcos de todos os tipos e proteções leves que não atrapalhem a mira.",
+            descricao: "O Kyudoka pratica o caminho do arco como uma forma de meditação letal, onde respiração, postura e foco se fundem em um único disparo perfeito. Ele prefere resolver o conflito antes que o inimigo sequer perceba seu risco, atingindo alvos que a maioria julgaria impossíveis. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Nozomi Shibata, Hana Toyotomi Jr. e Kenji Ibaraki.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Olho do Arqueiro", "Disparo Preciso", "Respiração Controlada", "Flecha Fatal"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -902,9 +1187,9 @@ const classes = {
         },
         {
             nome: "Sumo", foco: "Força e agarramento.",
-            descricao: "Construído como uma muralha viva, o lutador Sumo usa peso, técnica e força bruta para dominar qualquer adversário no combate corpo a corpo. Poucas criaturas — humanas ou não — conseguem permanecer de pé depois de encará-lo diretamente. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta e Fortitude, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Hiroshi Amano, Tetsu Kagemori e Suzu Onodera.",
-            pv: 28, pvNex: 6, pe: 2, peNex: 2, san: 10, sanNex: 2,
-            proficiencias: "Combate desarmado e proteções pesadas adaptadas ao seu porte físico.",
+            descricao: "Construído como uma muralha viva, o lutador Sumo usa peso, técnica e força bruta para dominar qualquer adversário no combate corpo a corpo. Poucas criaturas — humanas ou não — conseguem permanecer de pé depois de encará-lo diretamente. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Hiroshi Amano, Tetsu Kagemori e Suzu Onodera.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Força Avassaladora", "Corpo Inabalável", "Agarramento Supremo", "Impacto Sísmico"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -931,9 +1216,9 @@ const classes = {
         },
         {
             nome: "Sohei", foco: "Combate e espiritualidade.",
-            descricao: "O Sohei é um monge guerreiro que uniu o treinamento marcial dos templos à disciplina espiritual mais rígida. Ele enfrenta ameaças paranormais com a mesma serenidade que aplica à meditação, tratando cada batalha como uma extensão de sua fé. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta e Vontade, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Ren Kurogane, Hiroshi Mizushima e Sora Fujimori.",
-            pv: 22, pvNex: 4, pe: 4, peNex: 3, san: 15, sanNex: 3,
-            proficiencias: "Armas simples, bastões, naginatas de templo e proteções médias.",
+            descricao: "O Sohei é um monge guerreiro que uniu o treinamento marcial dos templos à disciplina espiritual mais rígida. Ele enfrenta ameaças paranormais com a mesma serenidade que aplica à meditação, tratando cada batalha como uma extensão de sua fé. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Ren Kurogane, Hiroshi Mizushima e Sora Fujimori.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Disciplina do Templo", "Corpo e Espírito", "Golpe Sagrado", "Purificação em Combate"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -960,9 +1245,9 @@ const classes = {
         },
         {
             nome: "Guarda Imperial", foco: "Defesa e proteção.",
-            descricao: "Treinado para colocar o próprio corpo entre o perigo e aqueles que jurou proteger, o Guarda Imperial é a última linha de defesa de nobres, fortalezas e aliados em campo. Sua disciplina defensiva torna cada ataque contra seus protegidos uma tarefa quase impossível. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta e Fortitude, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Rin Takagawa, Aiko Hasekura e Emi Onodera.",
-            pv: 26, pvNex: 5, pe: 2, peNex: 2, san: 12, sanNex: 3,
-            proficiencias: "Armas simples, armas marciais e proteções pesadas de alta qualidade.",
+            descricao: "Treinado para colocar o próprio corpo entre o perigo e aqueles que jurou proteger, o Guarda Imperial é a última linha de defesa de nobres, fortalezas e aliados em campo. Sua disciplina defensiva torna cada ataque contra seus protegidos uma tarefa quase impossível. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Rin Takagawa, Aiko Hasekura e Emi Onodera.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Protetor", "Escudo Humano", "Defesa Inabalável", "Guardião Absoluto"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -989,9 +1274,9 @@ const classes = {
         },
         {
             nome: "Duelista", foco: "Velocidade e precisão.",
-            descricao: "O Duelista transformou o confronto individual em uma forma de arte, valorizando reflexos e precisão acima de força bruta. Cada troca de golpes é um diálogo silencioso entre lâminas, e ele raramente perde a última palavra. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta e Reflexos, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Akira Kanzaki, Masaru Tsukino e Sakura Takagawa.",
-            pv: 21, pvNex: 4, pe: 4, peNex: 3, san: 12, sanNex: 3,
-            proficiencias: "Espadas leves, armas simples e proteções leves que preservam a agilidade.",
+            descricao: "O Duelista transformou o confronto individual em uma forma de arte, valorizando reflexos e precisão acima de força bruta. Cada troca de golpes é um diálogo silencioso entre lâminas, e ele raramente perde a última palavra. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Akira Kanzaki, Masaru Tsukino e Sakura Takagawa.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Desafio", "Golpe Preciso", "Reflexos do Duelista", "Contra-Ataque"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -1018,9 +1303,9 @@ const classes = {
         },
         {
             nome: "Caçador de Demônios", foco: "Combate paranormal.",
-            descricao: "Enquanto a maioria dos guerreiros treina para enfrentar outros humanos, o Caçador de Demônios prepara corpo e mente para lutar contra yokai, espíritos vingativos e horrores que desafiam a razão. Ele conhece as fraquezas do sobrenatural porque já perdeu companheiros aprendendo-as. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta e Ocultismo, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Ichiro Ryusaki, Haru Kuronuma e Toshi Sakaguchi.",
-            pv: 24, pvNex: 5, pe: 3, peNex: 3, san: 14, sanNex: 3,
-            proficiencias: "Armas simples, armas marciais e proteções médias, muitas vezes adornadas com símbolos de proteção.",
+            descricao: "Enquanto a maioria dos guerreiros treina para enfrentar outros humanos, o Caçador de Demônios prepara corpo e mente para lutar contra yokai, espíritos vingativos e horrores que desafiam a razão. Ele conhece as fraquezas do sobrenatural porque já perdeu companheiros aprendendo-as. Além de treinar o corpo para o combate direto, o combatente também aprende a liderar aliados em batalha e a manter seu equipamento sempre pronto para o confronto. Perícias treinadas: Luta ou Pontaria (uma das duas) e Fortitude ou Reflexos (uma das duas), mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Ichiro Ryusaki, Haru Kuronuma e Toshi Sakaguchi.",
+            pv: 20, pvNex: 4, pe: 2, peNex: 2, san: 12, sanNex: 3,
+            proficiencias: "Armas simples, armas táticas e proteções leves.",
             habilidades: ["Conhecimento das Criaturas", "Golpe Purificador", "Caçada Paranormal", "Instinto de Predador"],
             progressao: [
                 { nex: 5, habilidade: "Ataque Especial (2 PE, +5)" },
@@ -1049,9 +1334,9 @@ const classes = {
     especialista: [
         {
             nome: "Shinobi", foco: "Furtividade e espionagem.",
-            descricao: "Treinado nas sombras desde jovem, o Shinobi domina infiltração, disfarce e o silêncio absoluto. Ele entra e sai de lugares que deveriam ser impenetráveis, e quando é notado, geralmente já é tarde demais para impedi-lo. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Furtividade e Reflexos, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Kotaro Hasekura, Kiyomi Kurogane e Tetsu Fujimori.",
+            descricao: "Treinado nas sombras desde jovem, o Shinobi domina infiltração, disfarce e o silêncio absoluto. Ele entra e sai de lugares que deveriam ser impenetráveis, e quando é notado, geralmente já é tarde demais para impedi-lo. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Kotaro Hasekura, Kiyomi Kurogane e Tetsu Fujimori.",
             pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
-            proficiencias: "Armas simples, ferramentas de infiltração e proteções leves que não comprometem o silêncio.",
+            proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Infiltração das Sombras", "Desaparecimento"],
             progressao: [
                 { nex: 5, habilidade: "Eclético" },
@@ -1078,9 +1363,9 @@ const classes = {
         },
         {
             nome: "Rastreador", foco: "Rastreamento e orientação.",
-            descricao: "O Rastreador lê o terreno como um livro aberto, reconhecendo pegadas, cheiros e sinais que escapam a olhos destreinados. Contratado por senhores feudais e viajantes para localizar fugitivos, animais perigosos ou caminhos esquecidos, ele raramente perde uma trilha — mesmo quando ela leva a lugares que preferiria não encontrar. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Sobrevivência e Percepção, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Daigo Amano, Nao Kagemori e Emi Toyotomi Jr.",
+            descricao: "O Rastreador lê o terreno como um livro aberto, reconhecendo pegadas, cheiros e sinais que escapam a olhos destreinados. Contratado por senhores feudais e viajantes para localizar fugitivos, animais perigosos ou caminhos esquecidos, ele raramente perde uma trilha — mesmo quando ela leva a lugares que preferiria não encontrar. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Daigo Amano, Nao Kagemori e Emi Toyotomi Jr.",
             pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
-            proficiencias: "Armas simples e proteções leves que não atrapalham o deslocamento.",
+            proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Faro para Trilhas", "Instinto de Rastreador"],
             progressao: [
                 { nex: 5, habilidade: "Eclético" },
@@ -1107,9 +1392,9 @@ const classes = {
         },
         {
             nome: "Cartógrafo", foco: "Mapas, exploração e navegação.",
-            descricao: "Enquanto guerreiros temem o desconhecido, o Cartógrafo o documenta. Percorreu regiões inóspitas registrando cada rio, vila e caminho, e aprendeu que um mapa preciso vale tanto quanto um exército — principalmente quando esse mapa marca lugares que ninguém mais ousou catalogar. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Investigação e Equitação, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Ichiro Mizushima, Sakura Arakawa e Goro Kuronuma.",
-            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 17, sanNex: 4,
-            proficiencias: "Armas simples e proteções leves, priorizando liberdade para carregar instrumentos de medição.",
+            descricao: "Enquanto guerreiros temem o desconhecido, o Cartógrafo o documenta. Percorreu regiões inóspitas registrando cada rio, vila e caminho, e aprendeu que um mapa preciso vale tanto quanto um exército — principalmente quando esse mapa marca lugares que ninguém mais ousou catalogar. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Ichiro Mizushima, Sakura Arakawa e Goro Kuronuma.",
+            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
+            proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Leitura de Terreno", "Rota Conhecida"],
             progressao: [
                 { nex: 5, habilidade: "Eclético" },
@@ -1136,8 +1421,8 @@ const classes = {
         },
         {
             nome: "Historiador", foco: "Memória viva de tradições e histórias.",
-            descricao: "Guardião de histórias que não estão escritas em lugar nenhum, o Historiador viaja recolhendo lendas, canções e relatos transmitidos de geração em geração. Seu conhecimento oral preserva verdades que os registros oficiais convenientemente esqueceram — incluindo avisos antigos sobre o que ronda a escuridão. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Atualidades e Diplomacia, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Toshi Ryusaki, Mei Onodera e Jiro Hazuki.",
-            pv: 16, pvNex: 3, pe: 4, peNex: 3, san: 17, sanNex: 4,
+            descricao: "Guardião de histórias que não estão escritas em lugar nenhum, o Historiador viaja recolhendo lendas, canções e relatos transmitidos de geração em geração. Seu conhecimento oral preserva verdades que os registros oficiais convenientemente esqueceram — incluindo avisos antigos sobre o que ronda a escuridão. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Toshi Ryusaki, Mei Onodera e Jiro Hazuki.",
+            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
             proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Memória Oral", "Lenda Viva"],
             progressao: [
@@ -1165,9 +1450,9 @@ const classes = {
         },
         {
             nome: "Onmyoji", foco: "Conhecimento paranormal.",
-            descricao: "Estudioso de presságios, espíritos e do equilíbrio entre os elementos, o Onmyoji interpreta sinais que a maioria ignora por completo. Seu conhecimento acadêmico do oculto o torna capaz de prever perigos antes que se manifestem plenamente. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Susumu Takagawa, Rin Onodera e Hana Hasekura.",
-            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 17, sanNex: 4,
-            proficiencias: "Armas simples e proteções leves, priorizando liberdade de movimento para rituais.",
+            descricao: "Estudioso de presságios, espíritos e do equilíbrio entre os elementos, o Onmyoji interpreta sinais que a maioria ignora por completo. Seu conhecimento acadêmico do oculto o torna capaz de prever perigos antes que se manifestem plenamente. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Susumu Takagawa, Rin Onodera e Hana Hasekura.",
+            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
+            proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Leitura de Presságios", "Registro do Impossível"],
             progressao: [
                 { nex: 5, habilidade: "Eclético" },
@@ -1194,9 +1479,9 @@ const classes = {
         },
         {
             nome: "Médico", foco: "Medicina e suporte.",
-            descricao: "Treinado para manter aliados vivos mesmo nas piores circunstâncias, o Médico combina conhecimento técnico com uma calma cirúrgica diante do caos. Onde outros veem uma ferida fatal, ele vê um problema a ser resolvido com precisão. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Medicina e Intuição, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Daigo Hasekura, Aiko Kurogane e Goro Onodera.",
-            pv: 17, pvNex: 3, pe: 4, peNex: 3, san: 16, sanNex: 4,
-            proficiencias: "Armas simples e proteções leves que não atrapalhem procedimentos rápidos.",
+            descricao: "Treinado para manter aliados vivos mesmo nas piores circunstâncias, o Médico combina conhecimento técnico com uma calma cirúrgica diante do caos. Onde outros veem uma ferida fatal, ele vê um problema a ser resolvido com precisão. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Daigo Hasekura, Aiko Kurogane e Goro Onodera.",
+            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
+            proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Cirurgia de Campo", "Mãos que Salvam"],
             progressao: [
                 { nex: 5, habilidade: "Eclético" },
@@ -1223,9 +1508,9 @@ const classes = {
         },
         {
             nome: "Ferreiro", foco: "Artesanato e equipamentos.",
-            descricao: "Especialista em armas, ferramentas e reparos, o Ferreiro entende cada engrenagem e cada fio de uma lâmina como uma extensão de suas próprias mãos. Onde um equipamento falha, ele encontra uma solução antes que a situação piore. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Profissão e Tecnologia, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Emi Amano, Sakura Shibata e Daigo Tsukino.",
-            pv: 18, pvNex: 3, pe: 3, peNex: 3, san: 15, sanNex: 3,
-            proficiencias: "Martelos, ferramentas de forja e armas simples.",
+            descricao: "Especialista em armas, ferramentas e reparos, o Ferreiro entende cada engrenagem e cada fio de uma lâmina como uma extensão de suas próprias mãos. Onde um equipamento falha, ele encontra uma solução antes que a situação piore. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Emi Amano, Sakura Shibata e Daigo Tsukino.",
+            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
+            proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Forja Improvisada", "Manutenção Rápida"],
             progressao: [
                 { nex: 5, habilidade: "Eclético" },
@@ -1252,9 +1537,9 @@ const classes = {
         },
         {
             nome: "Inventor", foco: "Engenharia e criatividade.",
-            descricao: "O Inventor enxerga mecanismos e soluções onde outros só veem problemas. Movido por curiosidade incansável, transforma peças soltas e ideias estranhas em engenhocas que, de alguma forma, sempre funcionam quando mais importa. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Tecnologia e Investigação, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Ichiro Kuronuma, Yuto Mizushima e Jiro Kanzaki.",
-            pv: 16, pvNex: 3, pe: 4, peNex: 3, san: 16, sanNex: 4,
-            proficiencias: "Armas simples e ferramentas especializadas de sua própria criação.",
+            descricao: "O Inventor enxerga mecanismos e soluções onde outros só veem problemas. Movido por curiosidade incansável, transforma peças soltas e ideias estranhas em engenhocas que, de alguma forma, sempre funcionam quando mais importa. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Ichiro Kuronuma, Yuto Mizushima e Jiro Kanzaki.",
+            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
+            proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Engenhosidade", "Protótipo de Emergência"],
             progressao: [
                 { nex: 5, habilidade: "Eclético" },
@@ -1281,9 +1566,9 @@ const classes = {
         },
         {
             nome: "Diplomata", foco: "Presença e negociação.",
-            descricao: "Especialista em alianças, política e influência, o Diplomata sabe que palavras bem escolhidas evitam guerras que a espada jamais venceria. Sua presença impõe respeito mesmo em salões hostis, e ele raramente sai de uma negociação com as mãos vazias. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Diplomacia e Intuição, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Yuto Kanzaki, Akira Mizushima e Haru Kurogane.",
-            pv: 16, pvNex: 3, pe: 4, peNex: 3, san: 17, sanNex: 4,
-            proficiencias: "Armas simples e proteções leves que não comprometem sua apresentação.",
+            descricao: "Especialista em alianças, política e influência, o Diplomata sabe que palavras bem escolhidas evitam guerras que a espada jamais venceria. Sua presença impõe respeito mesmo em salões hostis, e ele raramente sai de uma negociação com as mãos vazias. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Yuto Kanzaki, Akira Mizushima e Haru Kurogane.",
+            pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
+            proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Negociador", "Presença Imponente"],
             progressao: [
                 { nex: 5, habilidade: "Eclético" },
@@ -1310,7 +1595,7 @@ const classes = {
         },
         {
             nome: "Escriba", foco: "Conhecimento e investigação.",
-            descricao: "Guardião de documentos e conhecimentos administrativos, o Escriba encontra informações onde ninguém mais procuraria. Sua memória meticulosa e paciência para vasculhar registros antigos já revelaram segredos que muitos preferiam manter enterrados. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Investigação e Ciências, mais uma quantidade de perícias à sua escolha igual a 2 + Intelecto. Figuras conhecidas dessa vocação: Ichiro Toyotomi Jr., Kotaro Mizushima e Nao Arakawa.",
+            descricao: "Guardião de documentos e conhecimentos administrativos, o Escriba encontra informações onde ninguém mais procuraria. Sua memória meticulosa e paciência para vasculhar registros antigos já revelaram segredos que muitos preferiam manter enterrados. Além de acumular conhecimento amplo sobre diversas áreas, o especialista também desenvolve uma versatilidade rara, sendo capaz de improvisar soluções onde ninguém mais consegue. Perícias treinadas: Uma quantidade de perícias à sua escolha igual a 7 + Intelecto. Figuras conhecidas dessa vocação: Ichiro Toyotomi Jr., Kotaro Mizushima e Nao Arakawa.",
             pv: 16, pvNex: 3, pe: 3, peNex: 3, san: 16, sanNex: 4,
             proficiencias: "Armas simples e proteções leves.",
             habilidades: ["Eclético", "Perito", "Memória de Arquivo", "Conexão de Registros"],
@@ -1341,9 +1626,9 @@ const classes = {
     ocultista: [
         {
             nome: "Miko", foco: "Ritual xintoísta e proteção espiritual.",
-            descricao: "Servindo em um santuário desde jovem, a Miko aprendeu danças, orações e rituais de purificação destinados a manter espíritos malignos afastados. Quando esses rituais deixaram de ser suficientes, ela precisou aprender a enfrentar diretamente aquilo que antes apenas mantinha à distância. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Religião e Vontade, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Rin Tsukino, Ren Onodera e Ren Shibata.",
-            pv: 15, pvNex: 3, pe: 5, peNex: 4, san: 18, sanNex: 4,
-            proficiencias: "Armas simples e instrumentos rituais, como sinos, leques e ofuda.",
+            descricao: "Servindo em um santuário desde jovem, a Miko aprendeu danças, orações e rituais de purificação destinados a manter espíritos malignos afastados. Quando esses rituais deixaram de ser suficientes, ela precisou aprender a enfrentar diretamente aquilo que antes apenas mantinha à distância. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Rin Tsukino, Ren Onodera e Ren Shibata.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Purificação", "Vínculo Espiritual", "Barreira Sagrada", "Chamado dos Kami"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1370,9 +1655,9 @@ const classes = {
         },
         {
             nome: "Yamabushi", foco: "Ascetismo nas montanhas e poder elemental.",
-            descricao: "O Yamabushi abandonou o conforto da vida em vilarejos para viver em retiro nas montanhas sagradas, submetendo o corpo a provações extremas em busca de poder espiritual. Esse ascetismo o deixou marcado por experiências que a maioria consideraria insanas — e perigosamente capaz de canalizar forças que não deveriam obedecer a um humano. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Fortitude e Vontade, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Masaru Kuronuma, Sakura Onodera e Masaru Toyotomi Jr.",
-            pv: 17, pvNex: 3, pe: 5, peNex: 4, san: 15, sanNex: 3,
-            proficiencias: "Armas simples, bastões rituais e proteções leves adaptadas a longas jornadas.",
+            descricao: "O Yamabushi abandonou o conforto da vida em vilarejos para viver em retiro nas montanhas sagradas, submetendo o corpo a provações extremas em busca de poder espiritual. Esse ascetismo o deixou marcado por experiências que a maioria consideraria insanas — e perigosamente capaz de canalizar forças que não deveriam obedecer a um humano. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Masaru Kuronuma, Sakura Onodera e Masaru Toyotomi Jr.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Ascese", "Punho Elemental", "Resistência do Eremita", "Fúria da Montanha"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1399,9 +1684,9 @@ const classes = {
         },
         {
             nome: "Exorcista", foco: "Confronto direto com entidades e possessões.",
-            descricao: "Treinado especificamente para expulsar espíritos que tomaram corpos ou lugares à força, o Exorcista enfrenta possessões que a maioria dos religiosos comuns nem ousaria se aproximar. Ele já olhou nos olhos de algo que usava um rosto humano como máscara e sobreviveu para continuar fazendo isso. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Religião, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Nozomi Toyotomi Jr., Rin Hasekura e Yuto Shirasu.",
-            pv: 16, pvNex: 3, pe: 5, peNex: 4, san: 16, sanNex: 4,
-            proficiencias: "Armas simples, adagas rituais e proteções leves reforçadas com símbolos de proteção.",
+            descricao: "Treinado especificamente para expulsar espíritos que tomaram corpos ou lugares à força, o Exorcista enfrenta possessões que a maioria dos religiosos comuns nem ousaria se aproximar. Ele já olhou nos olhos de algo que usava um rosto humano como máscara e sobreviveu para continuar fazendo isso. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Nozomi Toyotomi Jr., Rin Hasekura e Yuto Shirasu.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Rito de Expulsão", "Olhar que Reconhece", "Selo de Contenção", "Última Palavra"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1428,9 +1713,9 @@ const classes = {
         },
         {
             nome: "Xamã", foco: "Comunhão com espíritos da natureza.",
-            descricao: "Vivendo à margem das grandes vilas, o Xamã aprendeu tradições antigas de comunicação com espíritos de rios, florestas e montanhas. Ele não vê o paranormal como algo a ser combatido por padrão, mas como uma força a ser respeitada, negociada e, quando necessário, apaziguada. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Sobrevivência, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Yui Arakawa, Haru Kanzaki e Ren Amano.",
-            pv: 16, pvNex: 3, pe: 5, peNex: 4, san: 17, sanNex: 4,
-            proficiencias: "Armas simples e instrumentos rituais, como tambores e amuletos.",
+            descricao: "Vivendo à margem das grandes vilas, o Xamã aprendeu tradições antigas de comunicação com espíritos de rios, florestas e montanhas. Ele não vê o paranormal como algo a ser combatido por padrão, mas como uma força a ser respeitada, negociada e, quando necessário, apaziguada. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Yui Arakawa, Haru Kanzaki e Ren Amano.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Voz dos Espíritos", "Pacto Natural", "Trance Xamânico", "Guardião Invocado"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1457,9 +1742,9 @@ const classes = {
         },
         {
             nome: "Estudioso do Vazio", foco: "Pesquisa acadêmica do proibido.",
-            descricao: "Ao contrário do Onmyoji, que trata o oculto com tradição e ritual, o Estudioso do Vazio o encara como um campo de pesquisa perigoso e obsessivo. Ele devora textos proibidos e relatos descartados por outros acadêmicos, pagando o preço mental por um conhecimento que poucos deveriam buscar. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Ciências, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Akira Kagemori, Emi Fujimori e Rin Ryusaki.",
-            pv: 14, pvNex: 3, pe: 5, peNex: 4, san: 14, sanNex: 3,
-            proficiencias: "Armas simples e proteções leves, priorizando liberdade para consultar anotações em pleno confronto.",
+            descricao: "Ao contrário do Onmyoji, que trata o oculto com tradição e ritual, o Estudioso do Vazio o encara como um campo de pesquisa perigoso e obsessivo. Ele devora textos proibidos e relatos descartados por outros acadêmicos, pagando o preço mental por um conhecimento que poucos deveriam buscar. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Akira Kagemori, Emi Fujimori e Rin Ryusaki.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Conhecimento Proibido", "Fragmento de Verdade", "Mente Expandida", "Compreensão Perigosa"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1486,9 +1771,9 @@ const classes = {
         },
         {
             nome: "Necromante Ancestral", foco: "Contato com os mortos e espíritos vingativos.",
-            descricao: "Rejeitado por templos formais por lidar com práticas consideradas profanas, o Necromante Ancestral aprendeu a se comunicar com os mortos e a negociar com espíritos que se recusam a partir. Caminha em um território moralmente incerto, onde cada resposta obtida dos mortos tem um preço. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Emi Tsukino, Yui Onodera e Sakura Ibaraki.",
-            pv: 15, pvNex: 3, pe: 6, peNex: 4, san: 13, sanNex: 3,
-            proficiencias: "Armas simples e instrumentos rituais associados a cerimônias fúnebres.",
+            descricao: "Rejeitado por templos formais por lidar com práticas consideradas profanas, o Necromante Ancestral aprendeu a se comunicar com os mortos e a negociar com espíritos que se recusam a partir. Caminha em um território moralmente incerto, onde cada resposta obtida dos mortos tem um preço. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Emi Tsukino, Yui Onodera e Sakura Ibaraki.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Sussurro dos Mortos", "Vínculo Póstumo", "Toque Gélido", "Convocação Ancestral"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1515,9 +1800,9 @@ const classes = {
         },
         {
             nome: "Guardião de Selos", foco: "Contenção e proteção contra incursões paranormais.",
-            descricao: "Descendente de uma linhagem responsável por manter selos antigos intactos, o Guardião de Selos dedica a vida a impedir que coisas que não deveriam voltar consigam atravessar. Ele conhece o peso literal de manter uma porta fechada quando algo do outro lado está sempre empurrando. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Fortitude, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Goro Takagawa, Hiroshi Onodera e Sora Yagami.",
-            pv: 17, pvNex: 4, pe: 5, peNex: 3, san: 15, sanNex: 3,
-            proficiencias: "Armas simples e proteções médias reforçadas com talismãs de contenção.",
+            descricao: "Descendente de uma linhagem responsável por manter selos antigos intactos, o Guardião de Selos dedica a vida a impedir que coisas que não deveriam voltar consigam atravessar. Ele conhece o peso literal de manter uma porta fechada quando algo do outro lado está sempre empurrando. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Goro Takagawa, Hiroshi Onodera e Sora Yagami.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Selo Menor", "Vigília Eterna", "Barreira de Contenção", "Fechadura Definitiva"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1544,9 +1829,9 @@ const classes = {
         },
         {
             nome: "Adivinho", foco: "Presságios, sorte e manipulação do destino.",
-            descricao: "Lendo ossos, cartas ou os padrões da fumaça de incenso, o Adivinho enxerga fragmentos do que está por vir — nem sempre com clareza, e nem sempre com conforto. Ele aprendeu que prever o futuro é mais fácil do que convencer alguém a acreditar nele a tempo. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Intuição, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Nozomi Amano, Hana Ibaraki e Masaru Onodera.",
-            pv: 15, pvNex: 3, pe: 5, peNex: 4, san: 16, sanNex: 4,
-            proficiencias: "Armas simples e instrumentos de adivinhação, como varetas, ossos e cartas rituais.",
+            descricao: "Lendo ossos, cartas ou os padrões da fumaça de incenso, o Adivinho enxerga fragmentos do que está por vir — nem sempre com clareza, e nem sempre com conforto. Ele aprendeu que prever o futuro é mais fácil do que convencer alguém a acreditar nele a tempo. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Nozomi Amano, Hana Ibaraki e Masaru Onodera.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Vislumbre do Destino", "Sorte Torta", "Presságio Sombrio", "Ecoar o Amanhã"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1573,9 +1858,9 @@ const classes = {
         },
         {
             nome: "Curandeiro Espiritual", foco: "Cura através de rituais e energia espiritual.",
-            descricao: "Onde a medicina comum falha, o Curandeiro Espiritual recorre a cerimônias antigas para tratar males que não têm origem no corpo. Aprendeu que algumas feridas sangram alma, não sangue, e que curá-las exige tanto conhecimento ritual quanto compaixão. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Medicina e Religião, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Kenji Shirasu, Aiko Kanzaki e Isamu Hazuki.",
-            pv: 15, pvNex: 3, pe: 5, peNex: 4, san: 17, sanNex: 4,
-            proficiencias: "Armas simples e instrumentos rituais associados a cerimônias de cura.",
+            descricao: "Onde a medicina comum falha, o Curandeiro Espiritual recorre a cerimônias antigas para tratar males que não têm origem no corpo. Aprendeu que algumas feridas sangram alma, não sangue, e que curá-las exige tanto conhecimento ritual quanto compaixão. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Kenji Shirasu, Aiko Kanzaki e Isamu Hazuki.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Toque Curativo", "Purificação do Espírito", "Ritual de Restauração", "Vínculo Vital"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1602,9 +1887,9 @@ const classes = {
         },
         {
             nome: "Quebrador de Maldições", foco: "Identificação e remoção de maldições.",
-            descricao: "Especialista em reconhecer os sinais sutis de uma maldição — um azar persistente demais, uma doença que não responde a tratamento, um objeto que traz desgraça a quem o possui — o Quebrador de Maldições dedica a vida a desfazer amarras que a maioria nem percebe existir. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Intuição, mais uma quantidade de perícias à sua escolha igual a 1 + Intelecto. Figuras conhecidas dessa vocação: Ren Kagemori, Yui Tsukino e Akira Mizushima.",
-            pv: 15, pvNex: 3, pe: 6, peNex: 4, san: 15, sanNex: 3,
-            proficiencias: "Armas simples e instrumentos rituais usados para identificar e romper maldições.",
+            descricao: "Especialista em reconhecer os sinais sutis de uma maldição — um azar persistente demais, uma doença que não responde a tratamento, um objeto que traz desgraça a quem o possui — o Quebrador de Maldições dedica a vida a desfazer amarras que a maioria nem percebe existir. Além de estudar o Outro Lado, o ocultista aprende a canalizar pequenas frações desse poder em rituais controlados, sempre ciente do preço que esse conhecimento cobra. Perícias treinadas: Ocultismo e Vontade, mais uma quantidade de perícias à sua escolha igual a 3 + Intelecto. Figuras conhecidas dessa vocação: Ren Kagemori, Yui Tsukino e Akira Mizushima.",
+            pv: 12, pvNex: 2, pe: 4, peNex: 4, san: 20, sanNex: 5,
+            proficiencias: "Armas simples.",
             habilidades: ["Olhar Amaldiçoado", "Desfazer o Nó", "Rito de Quebra", "Última Maldição"],
             progressao: [
                 { nex: 5, habilidade: "Ritual Menor (2 PE)" },
@@ -1684,6 +1969,7 @@ function alterarAtributo(nome, valor) {
 
     atualizarEfeitosDeAtributo();
     atualizarCaracteristicas();
+    salvarProgresso();
 }
 
 // Atualiza os textos "PV +N", "PE +N" e "+N perícia(s)" nos cards de atributo
@@ -1770,6 +2056,7 @@ function selecionarOrigem(origem, elemento) {
     }
 
     atualizarCaracteristicas();
+    salvarProgresso();
 }
 
 // ============================================================
@@ -1833,6 +2120,7 @@ function selecionarClasse(classe, elemento) {
 
     mostrarDetalhesClasse(classe);
     atualizarCaracteristicas();
+    salvarProgresso();
 }
 
 // ============================================================
@@ -1958,9 +2246,24 @@ function atualizarCaracteristicas() {
         return;
     }
 
-    const pv = classeSelecionada.pv + atributos.vigor;
-    const pe = classeSelecionada.pe + atributos.presenca;
-    const san = classeSelecionada.san;
+    const incrementos = incrementosNex();
+    const pvSugerido = classeSelecionada.pv + atributos.vigor + incrementos * (classeSelecionada.pvNex + atributos.vigor);
+    const peSugerido = classeSelecionada.pe + atributos.presenca + incrementos * (classeSelecionada.peNex + atributos.presenca);
+    const sanSugerido = classeSelecionada.san + incrementos * classeSelecionada.sanNex;
+    const protecaoSugerida = protecaoEquipadaTexto();
+    const defesaSugerida = sugestaoDefesa();
+    const esquivaSugerida = sugestaoEsquiva();
+    const bloqueioSugerido = sugestaoBloqueio();
+    const contraAtaqueSugerido = sugestaoContraAtaque();
+
+    const valorPV = statsManuais.pv !== null ? statsManuais.pv : pvSugerido;
+    const valorPE = statsManuais.pe !== null ? statsManuais.pe : peSugerido;
+    const valorProtecao = statsManuais.protecao !== null ? statsManuais.protecao : protecaoSugerida;
+    const valorSAN = statsManuais.san !== null ? statsManuais.san : sanSugerido;
+    const valorDefesa = statsManuais.defesa !== null ? statsManuais.defesa : defesaSugerida;
+    const valorEsquiva = statsManuais.esquiva !== null ? statsManuais.esquiva : esquivaSugerida;
+    const valorBloqueio = statsManuais.bloqueio !== null ? statsManuais.bloqueio : bloqueioSugerido;
+    const valorContraAtaque = statsManuais.contraAtaque !== null ? statsManuais.contraAtaque : contraAtaqueSugerido;
 
     painel.innerHTML = `
         <div class="titulo-caracteristicas">
@@ -1968,32 +2271,67 @@ function atualizarCaracteristicas() {
                 CARACTERÍSTICAS DE
                 ${classeSelecionada.nome.toUpperCase()}
             </h2>
+            <p class="aviso-vazio">
+                Valores sugeridos automaticamente — apague e digite o que quiser em qualquer campo.
+            </p>
         </div>
 
         <div class="resumo-caracteristicas">
 
             <div class="caracteristica">
                 <span>PONTOS DE VIDA</span>
-                <strong>${pv}</strong>
-                <small>
-                    Base: ${classeSelecionada.pv}
-                    + Vigor: ${atributos.vigor}
-                </small>
+                <input type="text" class="campo-stat" value="${valorPV}"
+                       oninput="statManualAlterado('pv', this.value)">
+                <small>Sugestão: ${pvSugerido} (base ${classeSelecionada.pv} + Vigor ${atributos.vigor}${incrementos > 0 ? ` + ${incrementos}x NEX (${classeSelecionada.pvNex}+Vig cada)` : ""})</small>
             </div>
 
             <div class="caracteristica">
                 <span>PONTOS DE ESFORÇO</span>
-                <strong>${pe}</strong>
-                <small>
-                    Base: ${classeSelecionada.pe}
-                    + Presença: ${atributos.presenca}
-                </small>
+                <input type="text" class="campo-stat" value="${valorPE}"
+                       oninput="statManualAlterado('pe', this.value)">
+                <small>Sugestão: ${peSugerido} (base ${classeSelecionada.pe} + Presença ${atributos.presenca}${incrementos > 0 ? ` + ${incrementos}x NEX (${classeSelecionada.peNex}+Pre cada)` : ""})</small>
+            </div>
+
+            <div class="caracteristica">
+                <span>PROTEÇÃO</span>
+                <input type="text" class="campo-stat" value="${valorProtecao}"
+                       oninput="statManualAlterado('protecao', this.value)">
+                <small>Sugestão: ${protecaoSugerida} (${protecaoSelecionada ? protecaoSelecionada.nome : "nenhuma proteção equipada"}${escudoEquipado ? " + Escudo" : ""})</small>
             </div>
 
             <div class="caracteristica">
                 <span>SANIDADE</span>
-                <strong>${san}</strong>
-                <small>Sanidade inicial da classe</small>
+                <input type="text" class="campo-stat" value="${valorSAN}"
+                       oninput="statManualAlterado('san', this.value)">
+                <small>Sugestão: ${sanSugerido} (sanidade inicial${incrementos > 0 ? ` + ${incrementos}x NEX (${classeSelecionada.sanNex})` : ""})</small>
+            </div>
+
+            <div class="caracteristica">
+                <span>DEFESA</span>
+                <input type="text" class="campo-stat" value="${valorDefesa}"
+                       oninput="statManualAlterado('defesa', this.value)">
+                <small>Sugestão: ${defesaSugerida} (10 + Agilidade ${atributos.agilidade})</small>
+            </div>
+
+            <div class="caracteristica">
+                <span>ESQUIVA</span>
+                <input type="text" class="campo-stat" value="${valorEsquiva}"
+                       oninput="statManualAlterado('esquiva', this.value)">
+                <small>Sugestão: ${esquivaSugerida} (Defesa ${defesaSugerida} ${estaTreinado("Reflexos") ? "+ Reflexos 5" : "— treine Reflexos para bonificar"})</small>
+            </div>
+
+            <div class="caracteristica">
+                <span>BLOQUEIO (RD)</span>
+                <input type="text" class="campo-stat" value="${valorBloqueio}"
+                       oninput="statManualAlterado('bloqueio', this.value)">
+                <small>Sugestão: ${bloqueioSugerido} ${estaTreinado("Fortitude") ? "(bônus de Fortitude)" : "(precisa de Fortitude treinada para bloquear)"}</small>
+            </div>
+
+            <div class="caracteristica">
+                <span>CONTRA-ATAQUE</span>
+                <input type="text" class="campo-stat" value="${valorContraAtaque}"
+                       oninput="statManualAlterado('contraAtaque', this.value)">
+                <small>Sugestão: ${contraAtaqueSugerido} (= Defesa) ${estaTreinado("Luta") ? "— disponível (Luta treinada)" : "— precisa de Luta treinada"}</small>
             </div>
 
         </div>
@@ -2123,23 +2461,45 @@ function obterPersonagem() {
             ...atributos
         },
 
-        pv: classeSelecionada
-            ? classeSelecionada.pv + atributos.vigor
-            : 0,
+        pv: statsManuais.pv !== null
+            ? statsManuais.pv
+            : (classeSelecionada ? classeSelecionada.pv + atributos.vigor + incrementosNex() * (classeSelecionada.pvNex + atributos.vigor) : 0),
 
-        pe: classeSelecionada
-            ? classeSelecionada.pe + atributos.presenca
-            : 0,
+        pe: statsManuais.pe !== null
+            ? statsManuais.pe
+            : (classeSelecionada ? classeSelecionada.pe + atributos.presenca + incrementosNex() * (classeSelecionada.peNex + atributos.presenca) : 0),
 
-        san: classeSelecionada
-            ? classeSelecionada.san
-            : 0,
+        protecao: statsManuais.protecao !== null
+            ? statsManuais.protecao
+            : protecaoEquipadaTexto(),
+
+        san: statsManuais.san !== null
+            ? statsManuais.san
+            : (classeSelecionada ? classeSelecionada.san + incrementosNex() * classeSelecionada.sanNex : 0),
+
+        nex: nexPersonagem,
+
+        defesa: statsManuais.defesa !== null
+            ? statsManuais.defesa
+            : sugestaoDefesa(),
+
+        esquiva: statsManuais.esquiva !== null
+            ? statsManuais.esquiva
+            : sugestaoEsquiva(),
+
+        bloqueio: statsManuais.bloqueio !== null
+            ? statsManuais.bloqueio
+            : sugestaoBloqueio(),
+
+        contraAtaque: statsManuais.contraAtaque !== null
+            ? statsManuais.contraAtaque
+            : sugestaoContraAtaque(),
 
         pericias: textoPericias(),
 
         arma: armasSelecionadas.length > 0
             ? armasSelecionadas
-                .map(a => `${a.nome} — Categoria ${a.nivel} · ${a.categoria} · ${a.proficiencia} · dano ${a.dano} · teste de ${a.pericia} · alcance ${a.alcance} · ${a.maos} · peso ${a.peso} · tamanho ${a.tamanho} · ${a.espaco} slot${a.espaco === 1 ? "" : "s"} — ${a.especial}`)
+                .map(a => `${a.nome} — Categoria ${a.nivel} · ${a.categoria} · ${a.proficiencia} · dano ${calcularDano(a)} · teste de ${a.pericia} · alcance ${a.alcance} · ${a.maos} · peso ${a.peso} · tamanho ${a.tamanho} · ${a.espaco} slot${a.espaco === 1 ? "" : "s"} — ${a.especial}`)
                 .join(" | ")
             : "Nenhuma arma escolhida.",
 
@@ -2183,16 +2543,30 @@ function finalizarFicha() {
 // ============================================================
 
 // Extrai uma estimativa de Proteção a partir do texto de proficiências da classe
-function extrairProtecao() {
-    if (!classeSelecionada) return "—";
+// Sugestão de referência para Defesa (totalmente editável)
+function sugestaoDefesa() {
+    const bonusProtecao = protecaoSelecionada ? protecaoSelecionada.bonusDefesa : 0;
+    const bonusEscudo = escudoEquipado ? escudo.bonusDefesa : 0;
 
-    const texto = classeSelecionada.proficiencias.toLowerCase();
+    return 10 + atributos.agilidade + bonusProtecao + bonusEscudo;
+}
 
-    if (texto.includes("pesad")) return "3 (Pesada)";
-    if (texto.includes("médi") || texto.includes("media")) return "2 (Média)";
-    if (texto.includes("leve")) return "1 (Leve)";
+// Esquiva: Defesa + bônus de Reflexos (se treinado). Funciona contra ataques
+// corpo a corpo e à distância, desde que você consiga ver o atacante.
+function sugestaoEsquiva() {
+    const bonusReflexos = estaTreinado("Reflexos") ? 5 : 0;
+    return sugestaoDefesa() + bonusReflexos;
+}
 
-    return "0 (Nenhuma)";
+// Bloqueio: Resistência a Dano (RD) igual ao bônus de Fortitude, usada como
+// reação ao receber um ataque. Sem Fortitude treinada, não é possível bloquear.
+function sugestaoBloqueio() {
+    return estaTreinado("Fortitude") ? 5 : 0;
+}
+
+// Contra-ataque: mesmo valor da Defesa, mas só é possível usá-lo com Luta treinada.
+function sugestaoContraAtaque() {
+    return sugestaoDefesa();
 }
 
 // Monta a lista de equipamento inicial combinando armas, proteção e itens temáticos
@@ -2203,8 +2577,12 @@ function gerarEquipamento(personagem) {
         itens.push(`${arma.nome}${indice === 0 ? " (arma principal)" : ""}`);
     });
 
-    if (classeSelecionada) {
-        itens.push(`Proteção condizente com: ${classeSelecionada.proficiencias}`);
+    if (protecaoSelecionada) {
+        itens.push(`${protecaoSelecionada.nome} (+${protecaoSelecionada.bonusDefesa} Defesa)`);
+    }
+
+    if (escudoEquipado) {
+        itens.push(`${escudo.nome} (+${escudo.bonusDefesa} Defesa se empunhado)`);
     }
 
     if (origemSelecionada) {
@@ -2242,7 +2620,7 @@ function renderArmaDetalhe() {
     let html = `
         <p class="ficha-arma-linha"><strong>Nome:</strong> ${a.nome}</p>
         <p class="ficha-arma-linha"><strong>Categoria:</strong> ${a.nivel} · ${a.categoria}</p>
-        <p class="ficha-arma-linha"><strong>Dano:</strong> ${a.dano} · <strong>Teste de</strong> ${a.pericia}</p>
+        <p class="ficha-arma-linha"><strong>Dano:</strong> ${calcularDano(a)} · <strong>Teste de</strong> ${a.pericia}</p>
         <p class="ficha-arma-linha"><strong>Alcance:</strong> ${a.alcance}</p>
         <p class="ficha-arma-linha"><strong>Propriedades:</strong> ${a.maos} · Peso ${a.peso} · Tamanho ${a.tamanho} · ${a.espaco} slot${a.espaco === 1 ? "" : "s"}</p>
         <p class="ficha-arma-linha">${a.especial}</p>
@@ -2256,17 +2634,37 @@ function renderArmaDetalhe() {
     return html;
 }
 
-// Monta as linhas da tabela de Inventário com todas as armas carregadas
+// Monta as linhas da tabela de Inventário com armas, proteção e escudo carregados
 function gerarInventarioArmas() {
-    if (armasSelecionadas.length === 0) return "";
-
-    return armasSelecionadas.map(arma => `
+    const linhas = armasSelecionadas.map(arma => `
         <tr>
             <td>${arma.nome}</td>
             <td>${arma.categoria}</td>
             <td>${arma.espaco} slot${arma.espaco === 1 ? "" : "s"}</td>
         </tr>
-    `).join("");
+    `);
+
+    if (protecaoSelecionada) {
+        linhas.push(`
+            <tr>
+                <td>${protecaoSelecionada.nome}</td>
+                <td>Proteção</td>
+                <td>${protecaoSelecionada.espaco} slot${protecaoSelecionada.espaco === 1 ? "" : "s"}</td>
+            </tr>
+        `);
+    }
+
+    if (escudoEquipado) {
+        linhas.push(`
+            <tr>
+                <td>${escudo.nome}</td>
+                <td>Proteção</td>
+                <td>${escudo.espaco} slot</td>
+            </tr>
+        `);
+    }
+
+    return linhas.join("");
 }
 
 function preencherFicha(personagem) {
@@ -2278,21 +2676,17 @@ function preencherFicha(personagem) {
         fichaOrigem: personagem.origem,
         fichaCategoria: personagem.categoria.toUpperCase(),
         fichaClasse: personagem.classe,
-        fichaPV: personagem.pv,
-        fichaPE: personagem.pe,
-        fichaSAN: personagem.san,
-        fichaProtecao: extrairProtecao(),
+        fichaProtecao: personagem.protecao,
+        fichaDefesa: personagem.defesa,
+        fichaEsquiva: personagem.esquiva,
+        fichaBloqueio: personagem.bloqueio,
+        fichaContraAtaque: personagem.contraAtaque,
         fichaPericias: personagem.pericias,
         fichaAgilidade: personagem.atributos.agilidade,
         fichaForca: personagem.atributos.forca,
         fichaIntelecto: personagem.atributos.intelecto,
         fichaPresenca: personagem.atributos.presenca,
         fichaVigor: personagem.atributos.vigor,
-        fichaHexAgilidade: personagem.atributos.agilidade,
-        fichaHexForca: personagem.atributos.forca,
-        fichaHexIntelecto: personagem.atributos.intelecto,
-        fichaHexPresenca: personagem.atributos.presenca,
-        fichaHexVigor: personagem.atributos.vigor,
         fichaAparencia: personagem.aparencia,
         fichaPersonalidade: personagem.personalidade,
         fichaHistorico: personagem.historico,
@@ -2341,7 +2735,7 @@ function preencherFicha(personagem) {
     if (habilidadesTabela) habilidadesTabela.innerHTML = gerarTabelaHabilidades();
 
     const inventarioArmas = document.getElementById("fichaInventarioArmas");
-    if (inventarioArmas && armasSelecionadas.length > 0) {
+    if (inventarioArmas && (armasSelecionadas.length > 0 || protecaoSelecionada || escudoEquipado)) {
         inventarioArmas.innerHTML = gerarInventarioArmas();
     }
 }
@@ -2396,120 +2790,287 @@ function gerarPDF() {
 
     const personagem = obterPersonagem();
     const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "mm", "a4");
 
-    const pdf = new jsPDF();
+    const LARGURA = 210;
+    const ALTURA = 297;
+    const MARGEM = 15;
+    const LARGURA_UTIL = LARGURA - MARGEM * 2;
 
-    let y = 20;
+    const FUNDO = [10, 10, 10];
+    const VERMELHO = [117, 0, 0];
+    const VERMELHO_CLARO = [196, 18, 18];
+    const DOURADO = [199, 168, 91];
+    const TEXTO = [229, 221, 206];
+    const TEXTO_SUAVE = [160, 160, 160];
+    const LINHA = [68, 68, 68];
 
-    function verificarPagina(espaco = 15) {
-        if (y + espaco > 280) {
-            pdf.addPage();
-            y = 20;
+    let y = MARGEM;
+
+    function pintarFundo() {
+        pdf.setFillColor(...FUNDO);
+        pdf.rect(0, 0, LARGURA, ALTURA, "F");
+    }
+
+    function novaPagina() {
+        pdf.addPage();
+        pintarFundo();
+        y = MARGEM;
+    }
+
+    function verificarEspaco(altura) {
+        if (y + altura > ALTURA - MARGEM) {
+            novaPagina();
         }
     }
 
-    function titulo(texto) {
-        verificarPagina(15);
-
-        pdf.setFontSize(16);
-        pdf.text(texto, 15, y);
-
-        y += 10;
-    }
-
-    function escrever(label, conteudo) {
-        verificarPagina(20);
-
+    function barra(texto, largura = LARGURA_UTIL, x = MARGEM) {
+        verificarEspaco(11);
+        pdf.setFillColor(...VERMELHO);
+        pdf.rect(x, y, largura, 8, "F");
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont(undefined, "bold");
         pdf.setFontSize(11);
-
-        const linhas = pdf.splitTextToSize(
-            label ? `${label}: ${conteudo}` : String(conteudo),
-            180
-        );
-
-        pdf.text(linhas, 15, y);
-
-        y += linhas.length * 6 + 4;
+        pdf.text(texto, x + 3, y + 5.6);
+        y += 8 + 4;
     }
 
-    pdf.setFontSize(22);
+    function linhaLabel(label, valor, x = MARGEM, largura = LARGURA_UTIL) {
+        pdf.setFont(undefined, "bold");
+        pdf.setFontSize(10);
+        pdf.setTextColor(...DOURADO);
+        const rotulo = `${label}: `;
+        pdf.text(rotulo, x, y + 4);
+        const larguraRotulo = pdf.getTextWidth(rotulo);
+        pdf.setFont(undefined, "normal");
+        pdf.setTextColor(...TEXTO);
+        const linhas = pdf.splitTextToSize(String(valor), largura - larguraRotulo);
+        pdf.text(linhas[0] || "", x + larguraRotulo, y + 4);
+        y += 6;
+        if (linhas.length > 1) {
+            pdf.text(linhas.slice(1), x, y + 4);
+            y += (linhas.length - 1) * 5 + 2;
+        }
+    }
 
-    pdf.text(
-        "IMPÉRIO",
-        105,
-        y,
-        { align: "center" }
-    );
+    function paragrafo(texto, tamanho = 10, cor = TEXTO) {
+        pdf.setFont(undefined, "normal");
+        pdf.setFontSize(tamanho);
+        pdf.setTextColor(...cor);
+        const linhas = pdf.splitTextToSize(String(texto), LARGURA_UTIL);
+        verificarEspaco(linhas.length * 5 + 3);
+        pdf.text(linhas, MARGEM, y + 4);
+        y += linhas.length * 5 + 5;
+    }
 
-    y += 15;
+    function subtitulo(texto) {
+        verificarEspaco(8);
+        pdf.setFont(undefined, "bold");
+        pdf.setFontSize(12);
+        pdf.setTextColor(...VERMELHO_CLARO);
+        pdf.text(texto, MARGEM, y + 4);
+        y += 7;
+    }
 
-    pdf.setFontSize(14);
+    function linhaDivisoria() {
+        pdf.setDrawColor(...LINHA);
+        pdf.line(MARGEM, y, LARGURA - MARGEM, y);
+        y += 5;
+    }
 
-    pdf.text(
-        personagem.personagem,
-        105,
-        y,
-        { align: "center" }
-    );
+    // ---------- CAPA / CABEÇALHO ----------
+    pintarFundo();
 
-    y += 20;
+    pdf.setFont(undefined, "bold");
+    pdf.setFontSize(28);
+    pdf.setTextColor(...VERMELHO_CLARO);
+    pdf.text("IMPÉRIO", LARGURA / 2, y + 12, { align: "center" });
+    y += 18;
 
-    titulo("IDENTIDADE");
+    pdf.setFontSize(16);
+    pdf.setTextColor(...TEXTO);
+    pdf.text(personagem.personagem, LARGURA / 2, y, { align: "center" });
+    y += 6;
 
-    escrever("Personagem", personagem.personagem);
-    escrever("Jogador", personagem.jogador);
-    escrever("Nível", personagem.nivel);
-    escrever("Origem", personagem.origem);
-
-    titulo("CLASSE");
-
-    escrever("Categoria", personagem.categoria);
-    escrever("Classe", personagem.classe);
-
-    titulo("CARACTERÍSTICAS");
-
-    escrever("Pontos de Vida", personagem.pv);
-    escrever("Pontos de Esforço", personagem.pe);
-    escrever("Sanidade", personagem.san);
-
-    titulo("ATRIBUTOS");
-
-    escrever("Agilidade", personagem.atributos.agilidade);
-    escrever("Força", personagem.atributos.forca);
-    escrever("Intelecto", personagem.atributos.intelecto);
-    escrever("Presença", personagem.atributos.presenca);
-    escrever("Vigor", personagem.atributos.vigor);
-
-    titulo("PERÍCIAS");
-    escrever("", personagem.pericias);
-
-    titulo("ARMA PRINCIPAL");
-    escrever("", personagem.arma);
-
-    titulo("APARÊNCIA");
-    escrever("", personagem.aparencia);
-
-    titulo("PERSONALIDADE");
-    escrever("", personagem.personalidade);
-
-    titulo("HISTÓRICO");
-    escrever("", personagem.historico);
-
-    titulo("OBJETIVO");
-    escrever("", personagem.objetivo);
-
-    titulo("O PARANORMAL");
-    escrever("Resposta", personagem.respostaParanormal);
-
-    verificarPagina(20);
-
+    pdf.setFont(undefined, "italic");
     pdf.setFontSize(9);
+    pdf.setTextColor(...TEXTO_SUAVE);
+    pdf.text("ELE SEMPRE SOUBE", LARGURA / 2, y + 4, { align: "center" });
+    y += 12;
 
-    pdf.text(
-        "Ficha criada em: " + personagem.dataCriacao,
-        15,
-        y
-    );
+    // ---------- IDENTIDADE / CLASSE (lado a lado) ----------
+    const meiaLargura = (LARGURA_UTIL - 6) / 2;
+
+    barra("IDENTIDADE", meiaLargura, MARGEM);
+    const yDepoisBarra = y;
+    linhaLabel("Personagem", personagem.personagem, MARGEM, meiaLargura);
+    linhaLabel("Jogador", personagem.jogador, MARGEM, meiaLargura);
+    linhaLabel("Nível", personagem.nivel, MARGEM, meiaLargura);
+    linhaLabel("Origem", personagem.origem, MARGEM, meiaLargura);
+    const yColunaA = y;
+
+    y = yDepoisBarra - 12;
+    barra("CLASSE", meiaLargura, MARGEM + meiaLargura + 6);
+    linhaLabel("Categoria", personagem.categoria, MARGEM + meiaLargura + 6, meiaLargura);
+    linhaLabel("Classe", personagem.classe, MARGEM + meiaLargura + 6, meiaLargura);
+    const yColunaB = y;
+
+    y = Math.max(yColunaA, yColunaB) + 4;
+
+    // ---------- ORIGEM ----------
+    if (origemSelecionada) {
+        barra("ORIGEM");
+        pdf.setFont(undefined, "bold");
+        pdf.setFontSize(11);
+        pdf.setTextColor(...VERMELHO_CLARO);
+        verificarEspaco(6);
+        pdf.text(origemSelecionada.nome, MARGEM, y + 4);
+        y += 6;
+        paragrafo(origemSelecionada.descricao);
+        linhaLabel("Perícias treinadas", origemSelecionada.pericias.join(", "));
+        paragrafo(`${origemSelecionada.habilidade.nome}. ${origemSelecionada.habilidade.descricao}`, 9.5, TEXTO_SUAVE);
+    }
+
+    // ---------- ATRIBUTOS ----------
+    barra("ATRIBUTOS");
+    const atribs = [
+        ["Agilidade", personagem.atributos.agilidade],
+        ["Força", personagem.atributos.forca],
+        ["Intelecto", personagem.atributos.intelecto],
+        ["Presença", personagem.atributos.presenca],
+        ["Vigor", personagem.atributos.vigor]
+    ];
+    const larguraAtrib = LARGURA_UTIL / 5;
+    verificarEspaco(16);
+    const yAtrib = y;
+    atribs.forEach((item, indice) => {
+        const x = MARGEM + indice * larguraAtrib;
+        pdf.setDrawColor(...LINHA);
+        pdf.rect(x, yAtrib, larguraAtrib - 3, 16);
+        pdf.setFont(undefined, "normal");
+        pdf.setFontSize(8);
+        pdf.setTextColor(...TEXTO_SUAVE);
+        pdf.text(item[0].toUpperCase(), x + 3, yAtrib + 6);
+        pdf.setFont(undefined, "bold");
+        pdf.setFontSize(14);
+        pdf.setTextColor(...VERMELHO_CLARO);
+        pdf.text(String(item[1]), x + 3, yAtrib + 13);
+    });
+    y = yAtrib + 16 + 6;
+
+    // ---------- CARACTERÍSTICAS (PV / PE / PROTEÇÃO / SAN / DEFESA) ----------
+    const caracteristicas = [
+        ["PV", personagem.pv],
+        ["PE", personagem.pe],
+        ["PROTEÇÃO", personagem.protecao],
+        ["SAN", personagem.san],
+        ["DEFESA", personagem.defesa],
+        ["ESQUIVA", personagem.esquiva],
+        ["BLOQUEIO (RD)", personagem.bloqueio],
+        ["CONTRA-ATAQUE", personagem.contraAtaque]
+    ];
+    const larguraCarac = LARGURA_UTIL / 3;
+    verificarEspaco(58);
+    let yCarac = y;
+    caracteristicas.forEach((item, indice) => {
+        const coluna = indice % 3;
+        const linha = Math.floor(indice / 3);
+        const x = MARGEM + coluna * larguraCarac;
+        const yBox = yCarac + linha * 18;
+        pdf.setDrawColor(...LINHA);
+        pdf.rect(x, yBox, larguraCarac - 3, 16);
+        pdf.setFont(undefined, "normal");
+        pdf.setFontSize(8);
+        pdf.setTextColor(...DOURADO);
+        pdf.text(String(item[0]), x + 3, yBox + 6);
+        pdf.setFont(undefined, "bold");
+        pdf.setFontSize(13);
+        pdf.setTextColor(...TEXTO);
+        pdf.text(String(item[1]), x + 3, yBox + 13);
+    });
+    y = yCarac + 54 + 6;
+
+    // ---------- PROFICIÊNCIAS E PERÍCIAS ----------
+    if (classeSelecionada) {
+        barra("PROFICIÊNCIAS");
+        paragrafo(classeSelecionada.proficiencias);
+    }
+
+    barra("PERÍCIAS TREINADAS");
+    paragrafo(personagem.pericias);
+
+    // ---------- ARMA PRINCIPAL E EQUIPAMENTO ----------
+    barra("ARMA PRINCIPAL");
+    if (armasSelecionadas.length > 0) {
+        armasSelecionadas.forEach((arma, indice) => {
+            linhaDivisoria();
+            linhaLabel(indice === 0 ? "Principal" : "Extra", arma.nome);
+            linhaLabel("Categoria", `${arma.nivel} · ${arma.categoria} · ${arma.proficiencia}`);
+            linhaLabel("Dano / Teste", `${calcularDano(arma)} · ${arma.pericia}`);
+            linhaLabel("Alcance", arma.alcance);
+            linhaLabel("Propriedades", `${arma.maos} · Peso ${arma.peso} · Tamanho ${arma.tamanho} · ${arma.espaco} slot${arma.espaco === 1 ? "" : "s"}`);
+            paragrafo(arma.especial, 9.5, TEXTO_SUAVE);
+        });
+    } else {
+        paragrafo("Nenhuma arma escolhida.");
+    }
+
+    barra("EQUIPAMENTO");
+    gerarEquipamento(personagem).forEach(item => {
+        verificarEspaco(6);
+        pdf.setFont(undefined, "normal");
+        pdf.setFontSize(10);
+        pdf.setTextColor(...TEXTO);
+        const linhas = pdf.splitTextToSize(`•  ${item}`, LARGURA_UTIL);
+        pdf.text(linhas, MARGEM, y + 4);
+        y += linhas.length * 5 + 2;
+    });
+    y += 3;
+
+    // ---------- HABILIDADES & RITUAIS ----------
+    if (classeSelecionada && Array.isArray(classeSelecionada.progressao)) {
+        barra("HABILIDADES E RITUAIS (PROGRESSÃO DE NEX)");
+
+        classeSelecionada.progressao.forEach(passo => {
+            verificarEspaco(6);
+            pdf.setFont(undefined, "bold");
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(...DOURADO);
+            pdf.text(`${passo.nex}%`, MARGEM, y + 4);
+
+            pdf.setFont(undefined, "normal");
+            pdf.setTextColor(...TEXTO);
+            const linhas = pdf.splitTextToSize(passo.habilidade, LARGURA_UTIL - 16);
+            pdf.text(linhas, MARGEM + 16, y + 4);
+            y += Math.max(linhas.length * 5, 5) + 1.5;
+        });
+
+        y += 3;
+    }
+
+    // ---------- APARÊNCIA / PERSONALIDADE / HISTÓRICO / OBJETIVO ----------
+    barra("APARÊNCIA");
+    paragrafo(personagem.aparencia);
+
+    barra("PERSONALIDADE");
+    paragrafo(personagem.personalidade);
+
+    barra("HISTÓRICO");
+    paragrafo(personagem.historico);
+
+    barra("OBJETIVO");
+    paragrafo(personagem.objetivo);
+
+    // ---------- O PARANORMAL ----------
+    barra("O PARANORMAL");
+    linhaLabel("Você acredita que Ele existe?", personagem.respostaParanormal);
+
+    // ---------- RODAPÉ ----------
+    verificarEspaco(10);
+    pdf.setFont(undefined, "italic");
+    pdf.setFontSize(8);
+    pdf.setTextColor(...TEXTO_SUAVE);
+    pdf.text(`Ficha criada em: ${personagem.dataCriacao}`, MARGEM, y + 4);
 
     const nomeArquivo = personagem.personagem
         .replace(/[\\/:*?"<>|]/g, "_")
@@ -2543,11 +3104,22 @@ function gerarImagem() {
     if (areaExportar) areaExportar.style.display = "none";
     if (botaoCriarOutro) botaoCriarOutro.style.display = "none";
 
+    // Força a largura exata de uma folha A4 (210mm) em pixels, independente
+    // do zoom/tela do dispositivo, para a imagem sair sempre no formato certo
+    const larguraOriginal = ficha.style.width;
+    const maxLarguraOriginal = ficha.style.maxWidth;
+    const larguraA4px = Math.round((210 * 96) / 25.4);
+    ficha.style.width = larguraA4px + "px";
+    ficha.style.maxWidth = "none";
+
     html2canvas(ficha, {
         backgroundColor: "#050505",
-        scale: 2,
-        useCORS: true
+        scale: 3,
+        useCORS: true,
+        windowWidth: larguraA4px
     }).then(canvas => {
+        ficha.style.width = larguraOriginal;
+        ficha.style.maxWidth = maxLarguraOriginal;
         if (areaExportar) areaExportar.style.display = "";
         if (botaoCriarOutro) botaoCriarOutro.style.display = "";
 
@@ -2563,6 +3135,8 @@ function gerarImagem() {
         link.click();
 
     }).catch(erro => {
+        ficha.style.width = larguraOriginal;
+        ficha.style.maxWidth = maxLarguraOriginal;
         if (areaExportar) areaExportar.style.display = "";
         if (botaoCriarOutro) botaoCriarOutro.style.display = "";
 
@@ -2589,7 +3163,12 @@ Origem: ${personagem.origem}
 
 PV: ${personagem.pv}
 PE: ${personagem.pe}
+Proteção: ${personagem.protecao}
 SAN: ${personagem.san}
+Defesa: ${personagem.defesa}
+Esquiva: ${personagem.esquiva}
+Bloqueio (RD): ${personagem.bloqueio}
+Contra-ataque: ${personagem.contraAtaque}
 
 Agilidade: ${personagem.atributos.agilidade}
 Força: ${personagem.atributos.forca}
@@ -2699,6 +3278,129 @@ function voltarInicio() {
 }
 
 // ============================================================
+// MODO DE JOGO
+// ============================================================
+
+function abrirModoJogo() {
+    const personagem = obterPersonagem();
+
+    document.getElementById("fichaFinal")?.classList.remove("ativa");
+    document.getElementById("modoJogo")?.classList.add("ativa");
+
+    preencherModoJogo(personagem);
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function voltarParaFicha() {
+    document.getElementById("modoJogo")?.classList.remove("ativa");
+    document.getElementById("fichaFinal")?.classList.add("ativa");
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function toggleSecaoJogo(id) {
+    const conteudo = document.getElementById(id);
+    if (!conteudo) return;
+
+    const cabecalho = conteudo.previousElementSibling;
+    const seta = cabecalho?.querySelector(".seta");
+
+    conteudo.classList.toggle("aberta");
+
+    if (seta) {
+        seta.textContent = conteudo.classList.contains("aberta") ? "▾" : "▸";
+    }
+}
+
+function preencherModoJogo(personagem) {
+    const nomeEl = document.getElementById("jogoNome");
+    if (nomeEl) nomeEl.textContent = personagem.personagem;
+
+    const classeOrigemEl = document.getElementById("jogoClasseOrigem");
+    if (classeOrigemEl) {
+        classeOrigemEl.textContent = `${personagem.classe} · ${personagem.origem} · Nível ${personagem.nivel} · NEX ${personagem.nex}%`;
+    }
+
+    atualizarBarraStatus("pv");
+    atualizarBarraStatus("pe");
+    atualizarBarraStatus("san");
+
+    const combate = [
+        ["Proteção", personagem.protecao],
+        ["Defesa", personagem.defesa],
+        ["Esquiva", personagem.esquiva],
+        ["Bloqueio (RD)", personagem.bloqueio],
+        ["Contra-ataque", personagem.contraAtaque]
+    ];
+
+    const combateEl = document.getElementById("jogoCombate");
+    if (combateEl) {
+        combateEl.innerHTML = combate.map(([rotulo, valor]) => `
+            <div class="item-jogo">
+                <span class="item-jogo-rotulo">${rotulo}</span>
+                <span class="item-jogo-valor">${valor}</span>
+            </div>
+        `).join("");
+    }
+
+    const atributosEl = document.getElementById("jogoAtributos");
+    if (atributosEl) {
+        const listaAtributos = [
+            ["Agilidade", personagem.atributos.agilidade],
+            ["Força", personagem.atributos.forca],
+            ["Intelecto", personagem.atributos.intelecto],
+            ["Presença", personagem.atributos.presenca],
+            ["Vigor", personagem.atributos.vigor]
+        ];
+
+        atributosEl.innerHTML = listaAtributos.map(([rotulo, valor]) => `
+            <div class="item-jogo">
+                <span class="item-jogo-rotulo">${rotulo}</span>
+                <span class="item-jogo-valor">${valor}</span>
+            </div>
+        `).join("");
+    }
+
+    const armasEl = document.getElementById("jogoArmas");
+    if (armasEl) {
+        armasEl.innerHTML = armasSelecionadas.length > 0
+            ? armasSelecionadas.map((arma, indice) => `
+                <div class="carta-arma-jogo">
+                    <div class="carta-arma-jogo-topo">
+                        <strong>${arma.nome}${indice === 0 ? " (principal)" : ""}</strong>
+                        <span class="arma-dano-badge">${calcularDano(arma)}</span>
+                    </div>
+                    <p>${arma.categoria} · Cat. ${arma.nivel} · teste de ${arma.pericia} · alcance ${arma.alcance}</p>
+                    <p class="item-jogo-especial">${arma.especial}</p>
+                </div>
+            `).join("")
+            : `<p class="aviso-vazio">Nenhuma arma equipada.</p>`;
+    }
+
+    const periciasEl = document.getElementById("jogoPericias");
+    if (periciasEl) {
+        const nomesOrigem = origemSelecionada ? origemSelecionada.pericias : [];
+        const todasPericias = [...new Set([...nomesOrigem, ...periciasSelecionadas])];
+
+        periciasEl.innerHTML = todasPericias.length > 0
+            ? todasPericias.map(nome => {
+                const pericia = listaDePericias.find(p => p.nome === nome);
+                const abrev = pericia ? abreviacaoAtributo[pericia.atributo] : "";
+                const bonus = 5 + penalidadeArmaduraPesada(nome);
+
+                return `
+                    <div class="item-jogo">
+                        <span class="item-jogo-rotulo">${nome} <small>(${abrev})</small></span>
+                        <span class="item-jogo-valor">${bonus >= 0 ? "+" : ""}${bonus}</span>
+                    </div>
+                `;
+            }).join("")
+            : `<p class="aviso-vazio">Nenhuma perícia treinada.</p>`;
+    }
+}
+
+// ============================================================
 // NAVEGAÇÃO E INICIALIZAÇÃO
 // ============================================================
 
@@ -2752,6 +3454,16 @@ function mudarEtapa(novaEtapa) {
 document.addEventListener("DOMContentLoaded", () => {
     atualizarProgresso();
     atualizarEfeitosDeAtributo();
+    restaurarProgresso();
+
+    // Salva automaticamente sempre que qualquer campo de texto for editado
+    document.addEventListener("input", (evento) => {
+        const camposDeTexto = ["personagem", "jogador", "aparencia", "personalidade", "historico", "objetivo"];
+
+        if (camposDeTexto.includes(evento.target.id)) {
+            salvarProgresso();
+        }
+    });
 });
 // Transição da Tela Inicial para o Criador
 function criarPersonagem() {
