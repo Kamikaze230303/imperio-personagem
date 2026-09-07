@@ -164,6 +164,9 @@ function salvarProgresso() {
             armasNomes: armasSelecionadas.map(arma => arma.nome),
             protecaoNome: protecaoSelecionada ? protecaoSelecionada.nome : null,
             escudoEquipado,
+            equipamentosEspeciais: { ...equipamentosEspeciais },
+            espacoOcupadoCavalo,
+            consumiveisSelecionados: JSON.parse(JSON.stringify(consumiveisSelecionados)),
             nivelPersonagem,
             nexPersonagem,
             statsManuais: { ...statsManuais },
@@ -246,6 +249,25 @@ function restaurarProgresso() {
         ? listaDeProtecoes.find(p => p.nome === salvo.protecaoNome) || null
         : null;
     escudoEquipado = !!salvo.escudoEquipado;
+    equipamentosEspeciais = {
+        mochilaTatica: !!salvo.equipamentosEspeciais?.mochilaTatica,
+        cavalo: !!salvo.equipamentosEspeciais?.cavalo
+    };
+    espacoOcupadoCavalo = equipamentosEspeciais.cavalo
+        ? Math.max(0, Math.min(20, Number(salvo.espacoOcupadoCavalo) || 0))
+        : 0;
+    consumiveisSelecionados = criarEstadoConsumiveis();
+    if (salvo.consumiveisSelecionados) {
+        listaDeConsumiveis.forEach(item => {
+            const salvoItem = salvo.consumiveisSelecionados[item.nome] || {};
+            consumiveisSelecionados[item.nome] = {
+                personagem: Math.max(0, Math.floor(Number(salvoItem.personagem) || 0)),
+                cavalo: equipamentosEspeciais.cavalo
+                    ? Math.max(0, Math.floor(Number(salvoItem.cavalo) || 0))
+                    : 0
+            };
+        });
+    }
 
     nivelPersonagem = salvo.nivelPersonagem || 1;
     nexPersonagem = typeof salvo.nexPersonagem === "number" ? salvo.nexPersonagem : 0;
@@ -351,7 +373,7 @@ const listaDeArmas = [
     { nome: "Kusarigama", categoria: "Haste", nivel: 2, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Médio (com corrente)", maos: "Uma mão", peso: "Leve", tamanho: "Média", espaco: 2, especial: "Duas lâminas ligadas por corrente; pode desarmar o alvo." },
     { nome: "Kodachi", categoria: "Corte", nivel: 1, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "+2 em testes de Iniciativa enquanto empunhada." },
     { nome: "Chokuto Ancestral", categoria: "Corte", nivel: 2, proficiencia: "Marcial", dano: "1d8", pericia: "Luta", alcance: "Médio", maos: "Uma mão", peso: "Médio", tamanho: "Média", espaco: 2, especial: "Uma vez por combate, rerrola um dado de dano em 1." },
-    { nome: "Ofuda-tō", categoria: "Corte", nivel: 3, proficiencia: "Ritual", dano: "1d6", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "+1d6 de dano contra entidades paranormais." },
+    { nome: "Tachi", categoria: "Corte", nivel: 3, proficiencia: "Marcial", dano: "1d10", pericia: "Luta", alcance: "Médio", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 2, especial: "Alcance maior que a katana; +5 em ataques contra alvos montados ou em movimento." },
     { nome: "Naginata de Templo", categoria: "Haste", nivel: 3, proficiencia: "Marcial", dano: "1d10", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Pode atingir dois alvos adjacentes em um só golpe." },
     { nome: "Su Yari", categoria: "Haste", nivel: 0, proficiencia: "Simples", dano: "1d8", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Mantém inimigos à distância; facilita ataques de oportunidade." },
     { nome: "Kamayari", categoria: "Haste", nivel: 1, proficiencia: "Marcial", dano: "1d8", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Pode agarrar e puxar o alvo para perto." },
@@ -365,15 +387,15 @@ const listaDeArmas = [
     { nome: "Kanabo", categoria: "Impacto", nivel: 3, proficiencia: "Marcial", dano: "1d12", pericia: "Luta", alcance: "Médio", maos: "Duas mãos", peso: "Pesado", tamanho: "Grande", espaco: 4, especial: "Ignora parte da proteção de armaduras leves." },
     { nome: "Jitte", categoria: "Impacto", nivel: 1, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode ser usada para desarmar o oponente." },
     { nome: "Tessen", categoria: "Impacto", nivel: 2, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Discreta; passa despercebida em ambientes formais." },
-    { nome: "Kusari-fundo", categoria: "Distância", nivel: 4, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Médio (com corrente)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode enrolar e imobilizar um membro do alvo, mesmo a curta distância." },
+    { nome: "Senbon", categoria: "Distância", nivel: 4, proficiencia: "Simples", dano: "1d3", pericia: "Pontaria", alcance: "Curto (arremesso)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode arremessar até 3 de uma vez em um único ataque; pode ser untado com veneno antes do uso." },
     { nome: "Tekkō", categoria: "Impacto", nivel: 0, proficiencia: "Simples", dano: "2xFOR", pericia: "Luta", alcance: "Curto", maos: "Uma ou duas mãos", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Soqueiras de ferro; o dano é igual ao dobro da sua Força." },
     { nome: "Nunchako", categoria: "Impacto", nivel: 2, proficiencia: "Simples", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode ser usado para bloquear ataques corpo a corpo com facilidade." },
-    { nome: "Sino de Prata Amaldiçoado", categoria: "Impacto", nivel: 3, proficiencia: "Ritual", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "O som do impacto perturba espíritos próximos." },
+    { nome: "Kusari-fundo", categoria: "Impacto", nivel: 3, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Médio (com corrente)", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Pode enrolar e imobilizar um membro do alvo, mesmo a curta distância." },
     { nome: "Corrente de Selamento", categoria: "Impacto", nivel: 4, proficiencia: "Ritual", dano: "1d6", pericia: "Luta", alcance: "Médio (com corrente)", maos: "Uma mão", peso: "Leve", tamanho: "Média", espaco: 2, especial: "Pode prender uma entidade em vez de causar dano." },
-    { nome: "Espelho de Bronze Afiado", categoria: "Corte", nivel: 3, proficiencia: "Ritual", dano: "1d4", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Uma vez por cena, reflete um efeito paranormal simples." },
-    { nome: "Bastão Xamânico com Ossos", categoria: "Haste", nivel: 4, proficiencia: "Ritual", dano: "1d6", pericia: "Luta", alcance: "Médio", maos: "Uma ou duas mãos", peso: "Médio", tamanho: "Média", espaco: 2, especial: "Também serve como foco para rituais xamânicos, concedendo +3 em testes de Ocultismo enquanto empunhado." },
-    { nome: "Adaga de Osso Ancestral", categoria: "Corte", nivel: 2, proficiencia: "Ritual", dano: "1d6", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Gelada ao toque; incomoda quem a segura por muito tempo." },
-    { nome: "Sino-Faca Yamabushi", categoria: "Corte", nivel: 1, proficiencia: "Ritual", dano: "1d8", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "O guizo embutido dá vantagem em Intimidação após acertar." }
+    { nome: "Shikomi Katana", categoria: "Corte", nivel: 3, proficiencia: "Marcial", dano: "1d8", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Disfarçada de bengala comum; +10 no primeiro ataque se o alvo não souber que é uma arma." },
+    { nome: "Sodegarami", categoria: "Haste", nivel: 4, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Médio", tamanho: "Grande", espaco: 3, especial: "Feita para capturar, não matar: em vez de causar dano, pode prender o alvo pela roupa ou por um membro, deixando-o imobilizado até se soltar." },
+    { nome: "Katana", categoria: "Corte", nivel: 2, proficiencia: "Marcial", dano: "1d8", pericia: "Luta", alcance: "Médio", maos: "Uma mão", peso: "Médio", tamanho: "Média", espaco: 2, especial: "Lâmina extremamente afiada; ignora 1 ponto de Proteção do alvo." },
+    { nome: "Yoroi Doushi", categoria: "Corte", nivel: 1, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Adaga \"perfura-armaduras\": ignora toda a Proteção do alvo." }
 ];
 
 // Proteções: só uma pode ser equipada por vez (não acumulam entre si)
@@ -388,6 +410,75 @@ const escudo = { nome: "Escudo", bonusDefesa: 2, espaco: 1, especial: "Só conce
 let protecaoSelecionada = null;
 let escudoEquipado = false;
 
+// Equipamentos especiais e consumíveis possuem regras de espaço próprias.
+const listaDeEquipamentosEspeciais = [
+    {
+        id: "mochilaTatica",
+        nome: "Mochila Tática",
+        categoria: 1,
+        especial: "+2 no espaço total do inventário do personagem. Limite de 1 por pessoa."
+    },
+    {
+        id: "cavalo",
+        nome: "Cavalo",
+        categoria: 1,
+        especial: "Fornece 20 espaços separados do inventário do personagem."
+    }
+];
+
+const listaDeConsumiveis = [
+    {
+        nome: "Bomba",
+        uso: "Pontaria (For ou Agi)",
+        alcance: "Médio",
+        raio: "3m³",
+        espaco: 0.5,
+        valor: "10.000"
+    },
+    {
+        nome: "Poção Curativa",
+        uso: "Toque",
+        alcance: "—",
+        raio: "—",
+        espaco: 0.5,
+        valor: "1.000"
+    },
+    {
+        nome: "Veneno",
+        uso: "Toque",
+        alcance: "—",
+        raio: "—",
+        espaco: 0.5,
+        valor: "7.000"
+    },
+    {
+        nome: "Antídoto",
+        uso: "Toque",
+        alcance: "—",
+        raio: "—",
+        espaco: 0.5,
+        valor: "20.000"
+    }
+];
+
+let equipamentosEspeciais = {
+    mochilaTatica: false,
+    cavalo: false
+};
+
+let espacoOcupadoCavalo = 0;
+
+function criarEstadoConsumiveis() {
+    return Object.fromEntries(
+        listaDeConsumiveis.map(item => [
+            item.nome,
+            { personagem: 0, cavalo: 0 }
+        ])
+    );
+}
+
+let consumiveisSelecionados = criarEstadoConsumiveis();
+
 // Calcula o texto de dano de uma arma, resolvendo fórmulas dinâmicas
 // (ex.: Tekkō causa o dobro da Força, em vez de um dado fixo)
 function calcularDano(arma) {
@@ -399,19 +490,93 @@ function calcularDano(arma) {
 }
 
 // Capacidade de espaço no inventário: 2 se Força for 0, senão Força x 5.
-// Vale para armas, proteção e escudo juntos.
+// A Mochila Tática acrescenta 2. Consumíveis do personagem também ocupam espaço.
 function capacidadeInventario() {
-    return atributos.forca === 0 ? 2 : atributos.forca * 5;
+    const capacidadeBase = atributos.forca === 0 ? 2 : atributos.forca * 5;
+    return capacidadeBase + (equipamentosEspeciais.mochilaTatica ? 2 : 0);
 }
 
-// Quantos "slots" de espaço já estão ocupados (armas + proteção + escudo)
+function capacidadeCavalo() {
+    return equipamentosEspeciais.cavalo ? 20 : 0;
+}
+
+function espacoConsumiveis(local) {
+    return listaDeConsumiveis.reduce((total, item) => {
+        const quantidade = Number(consumiveisSelecionados[item.nome]?.[local]) || 0;
+        return total + quantidade * item.espaco;
+    }, 0);
+}
+
+// Quantos "slots" do personagem já estão ocupados.
 function espacoUsado() {
     let total = armasSelecionadas.reduce((soma, arma) => soma + arma.espaco, 0);
 
     if (protecaoSelecionada) total += protecaoSelecionada.espaco;
     if (escudoEquipado) total += escudo.espaco;
+    total += espacoConsumiveis("personagem");
 
     return total;
+}
+
+// O espaço reservado para acampamento, água e comida é separado dos consumíveis.
+function espacoUsadoCavalo() {
+    if (!equipamentosEspeciais.cavalo) return 0;
+    return Math.max(0, Number(espacoOcupadoCavalo) || 0) + espacoConsumiveis("cavalo");
+}
+
+function toggleEquipamentoEspecial(id) {
+    if (!Object.prototype.hasOwnProperty.call(equipamentosEspeciais, id)) return;
+
+    equipamentosEspeciais[id] = !equipamentosEspeciais[id];
+
+    if (id === "cavalo" && !equipamentosEspeciais.cavalo) {
+        espacoOcupadoCavalo = 0;
+        listaDeConsumiveis.forEach(item => {
+            consumiveisSelecionados[item.nome].cavalo = 0;
+        });
+    }
+
+    mostrarArmas();
+    salvarProgresso();
+}
+
+function alterarEspacoOcupadoCavalo(valor) {
+    if (!equipamentosEspeciais.cavalo) return;
+
+    const consumiveisNoCavalo = espacoConsumiveis("cavalo");
+    const limite = Math.max(0, capacidadeCavalo() - consumiveisNoCavalo);
+    espacoOcupadoCavalo = Math.max(0, Math.min(limite, Number(valor) || 0));
+
+    mostrarArmas();
+    salvarProgresso();
+}
+
+function alterarQuantidadeConsumivel(nome, local, valor) {
+    const item = listaDeConsumiveis.find(consumivel => consumivel.nome === nome);
+    if (!item || !["personagem", "cavalo"].includes(local)) return;
+    if (local === "cavalo" && !equipamentosEspeciais.cavalo) return;
+
+    const estadoItem = consumiveisSelecionados[nome];
+    const quantidadeAtual = Number(estadoItem?.[local]) || 0;
+    const quantidadePedida = Math.max(0, Math.floor(Number(valor) || 0));
+    const capacidade = local === "personagem" ? capacidadeInventario() : capacidadeCavalo();
+    const usadoAtual = local === "personagem" ? espacoUsado() : espacoUsadoCavalo();
+    const disponivelSemEsteItem = capacidade - (usadoAtual - quantidadeAtual * item.espaco);
+    const quantidadeMaxima = Math.max(
+        0,
+        Math.floor((disponivelSemEsteItem / item.espaco) + 0.000001)
+    );
+    const quantidadeFinal = Math.min(quantidadePedida, quantidadeMaxima);
+
+    if (quantidadeFinal < quantidadePedida) {
+        alert(
+            `Não há espaço suficiente. Você pode carregar no máximo ${quantidadeMaxima} unidade(s) de ${item.nome} nesse local.`
+        );
+    }
+
+    consumiveisSelecionados[nome][local] = quantidadeFinal;
+    mostrarArmas();
+    salvarProgresso();
 }
 
 // Texto/valor da proteção atualmente equipada, usado como sugestão do stat "Proteção"
@@ -509,14 +674,23 @@ function mostrarArmas() {
 
     const capacidade = capacidadeInventario();
     const usado = espacoUsado();
+    const capacidadeDoCavalo = capacidadeCavalo();
+    const usadoDoCavalo = espacoUsadoCavalo();
 
     if (resumo) {
         resumo.innerHTML = `
             <div class="pontos-box">
                 <p>ESPAÇO DE INVENTÁRIO</p>
                 <strong>${usado} / ${capacidade}</strong>
-                <small>Capacidade pela Força (${atributos.forca}) — armas, proteção e escudo dividem o mesmo espaço</small>
+                <small>Capacidade pela Força (${atributos.forca})${equipamentosEspeciais.mochilaTatica ? " + Mochila Tática" : ""} — armas, proteção, escudo e consumíveis dividem o mesmo espaço</small>
             </div>
+            ${equipamentosEspeciais.cavalo ? `
+                <div class="pontos-box pontos-box-cavalo">
+                    <p>ESPAÇO DO CAVALO</p>
+                    <strong>${usadoDoCavalo} / ${capacidadeDoCavalo}</strong>
+                    <small>Inclui o espaço reservado e os consumíveis guardados no cavalo</small>
+                </div>
+            ` : ""}
         `;
     }
 
@@ -657,6 +831,103 @@ function mostrarArmas() {
             </div>
         `;
     }).join("");
+
+    const especiaisEl = document.getElementById("listaEquipamentosEspeciais");
+    if (especiaisEl) {
+        especiaisEl.innerHTML = `
+            <div class="grupo-armas">
+                <div class="grupo-armas-header">
+                    <h3>Equipamentos especiais</h3>
+                    <span class="grupo-contador">limites próprios</span>
+                </div>
+                <div class="grupo-armas-lista">
+                    ${listaDeEquipamentosEspeciais.map(equipamento => {
+                        const selecionado = equipamentosEspeciais[equipamento.id];
+                        return `
+                            <div class="arma-item equipamento-especial-item ${selecionado ? "selecionada" : ""}">
+                                <label class="equipamento-especial-check">
+                                    <input type="checkbox"
+                                           ${selecionado ? "checked" : ""}
+                                           onchange="toggleEquipamentoEspecial('${equipamento.id}')">
+                                    <span class="arma-check-indicador"></span>
+                                    <span class="arma-nivel-badge arma-nivel-${equipamento.categoria}">CATEGORIA ${equipamento.categoria}</span>
+                                    <div class="arma-topo">
+                                        <h4 class="arma-nome">${equipamento.nome}</h4>
+                                    </div>
+                                </label>
+                                <p class="arma-especial">${equipamento.especial}</p>
+                                ${equipamento.id === "cavalo" && selecionado ? `
+                                    <label class="campo-cavalo">
+                                        <span>Espaço já ocupado no cavalo (acampamento, água, comida, etc.)</span>
+                                        <input type="number"
+                                               min="0"
+                                               max="${Math.max(0, capacidadeDoCavalo - espacoConsumiveis("cavalo"))}"
+                                               step="1"
+                                               value="${espacoOcupadoCavalo}"
+                                               onchange="alterarEspacoOcupadoCavalo(this.value)">
+                                    </label>
+                                    <p class="espaco-cavalo-restante">
+                                        Espaço restante para consumíveis: ${Math.max(0, capacidadeDoCavalo - usadoDoCavalo)}
+                                    </p>
+                                ` : ""}
+                            </div>
+                        `;
+                    }).join("")}
+                </div>
+            </div>
+        `;
+    }
+
+    const consumiveisEl = document.getElementById("listaConsumiveis");
+    if (consumiveisEl) {
+        consumiveisEl.innerHTML = `
+            <div class="grupo-armas">
+                <div class="grupo-armas-header">
+                    <h3>Consumíveis</h3>
+                    <span class="grupo-contador">quantidade livre, conforme o espaço</span>
+                </div>
+                <div class="grupo-armas-lista">
+                    ${listaDeConsumiveis.map(item => {
+                        const estado = consumiveisSelecionados[item.nome];
+                        return `
+                            <div class="arma-item consumivel-item">
+                                <div class="arma-topo">
+                                    <h4 class="arma-nome">${item.nome}</h4>
+                                    <span class="arma-dano-badge">${item.valor}</span>
+                                </div>
+                                <div class="arma-specs">
+                                    <span><strong>Uso</strong> ${item.uso}</span>
+                                    <span><strong>Alcance</strong> ${item.alcance}</span>
+                                    <span><strong>Raio</strong> ${item.raio}</span>
+                                    <span><strong>Espaço</strong> ${item.espaco} por unidade</span>
+                                </div>
+                                <div class="consumivel-quantidades">
+                                    <label>
+                                        <span>Personagem</span>
+                                        <input type="number"
+                                               min="0"
+                                               step="1"
+                                               value="${estado.personagem}"
+                                               onchange="alterarQuantidadeConsumivel('${item.nome}', 'personagem', this.value)">
+                                    </label>
+                                    <label>
+                                        <span>Cavalo</span>
+                                        <input type="number"
+                                               min="0"
+                                               step="1"
+                                               value="${estado.cavalo}"
+                                               ${equipamentosEspeciais.cavalo ? "" : "disabled"}
+                                               onchange="alterarQuantidadeConsumivel('${item.nome}', 'cavalo', this.value)">
+                                    </label>
+                                </div>
+                                ${!equipamentosEspeciais.cavalo ? `<p class="arma-motivo">Equipe o Cavalo para guardar consumíveis nele.</p>` : ""}
+                            </div>
+                        `;
+                    }).join("")}
+                </div>
+            </div>
+        `;
+    }
 }
 
 function togglePericia(nome) {
@@ -2628,6 +2899,10 @@ function obterPersonagem() {
                 .join(" | ")
             : "Nenhuma arma escolhida.",
 
+        equipamentosEspeciais: { ...equipamentosEspeciais },
+        espacoOcupadoCavalo,
+        consumiveisSelecionados: JSON.parse(JSON.stringify(consumiveisSelecionados)),
+
         respostaParanormal:
             respostaEle?.dataset.resposta || "Não respondido",
 
@@ -2709,6 +2984,24 @@ function gerarEquipamento(personagem) {
         itens.push(`${escudo.nome} (+${escudo.bonusDefesa} Defesa se empunhado)`);
     }
 
+    if (equipamentosEspeciais.mochilaTatica) {
+        itens.push("Mochila Tática (+2 no espaço total do personagem)");
+    }
+
+    if (equipamentosEspeciais.cavalo) {
+        itens.push(`Cavalo (${Math.max(0, capacidadeCavalo() - espacoUsadoCavalo())} espaço(s) restante(s))`);
+    }
+
+    listaDeConsumiveis.forEach(item => {
+        const estado = consumiveisSelecionados[item.nome];
+        if (estado.personagem > 0) {
+            itens.push(`${item.nome} x${estado.personagem} (personagem)`);
+        }
+        if (equipamentosEspeciais.cavalo && estado.cavalo > 0) {
+            itens.push(`${item.nome} x${estado.cavalo} (cavalo)`);
+        }
+    });
+
     if (origemSelecionada) {
         itens.push(`Item pessoal ligado à origem de ${origemSelecionada.nome}`);
     }
@@ -2788,6 +3081,48 @@ function gerarInventarioArmas() {
         `);
     }
 
+    if (equipamentosEspeciais.mochilaTatica) {
+        linhas.push(`
+            <tr>
+                <td>Mochila Tática</td>
+                <td>Especial</td>
+                <td>+2 espaços</td>
+            </tr>
+        `);
+    }
+
+    if (equipamentosEspeciais.cavalo) {
+        linhas.push(`
+            <tr>
+                <td>Cavalo</td>
+                <td>Especial</td>
+                <td>${Math.max(0, capacidadeCavalo() - espacoUsadoCavalo())} de ${capacidadeCavalo()} slots livres</td>
+            </tr>
+        `);
+    }
+
+    listaDeConsumiveis.forEach(item => {
+        const estado = consumiveisSelecionados[item.nome];
+        if (estado.personagem > 0) {
+            linhas.push(`
+                <tr>
+                    <td>${item.nome} x${estado.personagem}</td>
+                    <td>Consumível · personagem</td>
+                    <td>${estado.personagem * item.espaco} slots</td>
+                </tr>
+            `);
+        }
+        if (equipamentosEspeciais.cavalo && estado.cavalo > 0) {
+            linhas.push(`
+                <tr>
+                    <td>${item.nome} x${estado.cavalo}</td>
+                    <td>Consumível · cavalo</td>
+                    <td>${estado.cavalo * item.espaco} slots</td>
+                </tr>
+            `);
+        }
+    });
+
     return linhas.join("");
 }
 
@@ -2866,7 +3201,16 @@ function preencherFicha(personagem) {
 
     const inventarioArmas = document.getElementById("fichaInventarioArmas");
     if (inventarioArmas) {
-        const possuiItens = armasSelecionadas.length > 0 || protecaoSelecionada || escudoEquipado;
+        const possuiItens =
+            armasSelecionadas.length > 0 ||
+            protecaoSelecionada ||
+            escudoEquipado ||
+            equipamentosEspeciais.mochilaTatica ||
+            equipamentosEspeciais.cavalo ||
+            listaDeConsumiveis.some(item => {
+                const estado = consumiveisSelecionados[item.nome];
+                return estado.personagem > 0 || estado.cavalo > 0;
+            });
 
         inventarioArmas.innerHTML = possuiItens
             ? gerarInventarioArmas()
