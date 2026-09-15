@@ -181,16 +181,25 @@
         class="menu-item"
         onclick="mudarEtapa(7)">
 
-    07 - EQUIPAMENTO
+    07 - RITUAIS
+
+</button>
+
+
+<button type="button"
+        class="menu-item"
+        onclick="mudarEtapa(8)">
+
+    08 - EQUIPAMENTO
 
 </button>
 
 
 <button type="button"
         class="menu-item paranormal"
-        onclick="mudarEtapa(8)">
+        onclick="mudarEtapa(9)">
 
-    08 - O PARANORMAL
+    09 - O PARANORMAL
 
 </button>
 
@@ -797,11 +806,61 @@
 
 <!-- ================================================= -->
 
-<!-- ETAPA 7 - EQUIPAMENTO -->
+<!-- ETAPA 7 - RITUAIS -->
 
 <!-- ================================================= -->
 
 <div id="etapa7" class="etapa">
+
+<div class="titulo-etapa">
+
+    <h2>RITUAIS</h2>
+
+    <p>
+        Escolha um dos cinco elementos para ver os rituais disponíveis
+        e marque quais o seu personagem conhece.
+    </p>
+</div>
+
+
+<div id="elementosRituais" class="elementos-rituais"></div>
+
+
+<div id="resumoRituaisConhecidos" class="resumo-rituais-conhecidos"></div>
+
+
+<div id="listaRituaisElemento" class="lista-rituais"></div>
+
+
+<div class="navegacao">
+
+    <button class="botao-secundario"
+            onclick="mudarEtapa(6)">
+
+        VOLTAR
+
+    </button>
+
+
+    <button class="botao-principal"
+            onclick="mudarEtapa(8)">
+
+        PRÓXIMO
+
+    </button>
+
+</div>
+
+
+</div>
+
+<!-- ================================================= -->
+
+<!-- ETAPA 8 - EQUIPAMENTO -->
+
+<!-- ================================================= -->
+
+<div id="etapa8" class="etapa">
 
 <div class="titulo-etapa">
 
@@ -832,7 +891,7 @@
 <div class="navegacao">
 
     <button class="botao-secundario"
-            onclick="mudarEtapa(6)">
+            onclick="mudarEtapa(7)">
 
         VOLTAR
 
@@ -840,7 +899,7 @@
 
 
     <button class="botao-principal"
-            onclick="mudarEtapa(8)">
+            onclick="mudarEtapa(9)">
 
         PRÓXIMO
 
@@ -853,11 +912,11 @@
 
 <!-- ================================================= -->
 
-<!-- ETAPA 8 - O PARANORMAL -->
+<!-- ETAPA 9 - O PARANORMAL -->
 
 <!-- ================================================= -->
 
-<div id="etapa8" class="etapa">
+<div id="etapa9" class="etapa">
 
 
 <div class="titulo-etapa">
@@ -912,7 +971,7 @@
 <div class="navegacao">
 
     <button class="botao-secundario"
-            onclick="mudarEtapa(7)">
+            onclick="mudarEtapa(8)">
 
         VOLTAR
 
@@ -1214,6 +1273,15 @@
     </div>
 
 
+    <div class="ficha-historia">
+
+        <h3>RITUAIS CONHECIDOS</h3>
+
+        <div id="fichaRituaisConhecidos" class="ficha-rituais-lista"></div>
+
+    </div>
+
+
     <div class="ficha-corpo ficha-corpo-historia">
 
         <div>
@@ -1455,6 +1523,17 @@
         </button>
         <div class="secao-jogo-conteudo aberta" id="secaoJogoPericias">
             <div class="lista-jogo-pericias" id="jogoPericias"></div>
+        </div>
+    </div>
+
+
+    <div class="secao-jogo">
+        <button type="button" class="secao-jogo-header" onclick="toggleSecaoJogo('secaoJogoRituais')">
+            <span>RITUAIS</span>
+            <span class="seta">▾</span>
+        </button>
+        <div class="secao-jogo-conteudo aberta" id="secaoJogoRituais">
+            <div id="jogoRituais" class="ficha-rituais-lista"></div>
         </div>
     </div>
 

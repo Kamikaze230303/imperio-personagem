@@ -14,6 +14,28 @@ let origemSelecionada = null;
 let categoriaSelecionada = "";
 let classeSelecionada = null;
 
+// --- Trilhas, Talentos e Rituais (IMPÉRIO) ---
+let trilhaSelecionada = { combatente: null, especialista: null, ocultista: null };
+let talentosEscolhidos = { combatente: {}, especialista: {}, ocultista: {} };
+let rituaisConhecidos = [];
+let elementoRitualAtivo = null;
+
+// Habilidade base de cada categoria (Combatente/Especialista/Ocultista)
+const habilidadeBaseCategoria = {
+    combatente: {
+        nome: "Instinto de Batalha",
+        desc: "Ao fazer um teste de Luta ou Pontaria, pode gastar 2 PE para ser considerado treinado nessa perícia durante o teste."
+    },
+    especialista: {
+        nome: "Aplicação de Conhecimento",
+        desc: "Ao fazer um teste de perícia (exceto Luta e Pontaria), pode gastar 2 PE para ser considerado treinado nessa perícia durante o teste."
+    },
+    ocultista: {
+        nome: "Toque do Além",
+        desc: "Ao fazer um teste envolvendo o sobrenatural (rituais, percepção de entidades, resistência mental), pode gastar 2 PE para ser considerado treinado nesse teste."
+    }
+};
+
 let atributos = {
     agilidade: 1,
     forca: 1,
@@ -172,6 +194,13 @@ function salvarProgresso() {
             statsManuais: { ...statsManuais },
             statusAtual: { ...statusAtual },
             fotoPersonagem,
+            trilhaSelecionadaNomes: {
+                combatente: trilhaSelecionada.combatente ? trilhaSelecionada.combatente.nome : null,
+                especialista: trilhaSelecionada.especialista ? trilhaSelecionada.especialista.nome : null,
+                ocultista: trilhaSelecionada.ocultista ? trilhaSelecionada.ocultista.nome : null
+            },
+            talentosEscolhidos: JSON.parse(JSON.stringify(talentosEscolhidos)),
+            rituaisConhecidosRef: rituaisConhecidos.map(r => ({ elemento: r.elemento, nome: r.nome })),
             respostaParanormal: document.getElementById("respostaEle")?.dataset.resposta || null,
             campos: {
                 personagem: document.getElementById("personagem")?.value || "",
@@ -238,6 +267,26 @@ function restaurarProgresso() {
     }
 
     origemSelecionada = origens.find(o => o.nome === salvo.origemNome) || null;
+
+    ["combatente", "especialista", "ocultista"].forEach(cat => {
+        const nomeTrilhaSalva = salvo.trilhaSelecionadaNomes && salvo.trilhaSelecionadaNomes[cat];
+        trilhaSelecionada[cat] = nomeTrilhaSalva
+            ? (trilhas[cat] || []).find(t => t.nome === nomeTrilhaSalva) || null
+            : null;
+    });
+
+    talentosEscolhidos = (salvo.talentosEscolhidos && typeof salvo.talentosEscolhidos === "object")
+        ? salvo.talentosEscolhidos
+        : { combatente: {}, especialista: {}, ocultista: {} };
+
+    rituaisConhecidos = Array.isArray(salvo.rituaisConhecidosRef)
+        ? salvo.rituaisConhecidosRef
+            .map(ref => {
+                const ritual = (rituais[ref.elemento] || []).find(r => r.nome === ref.nome);
+                return ritual ? { ...ritual, elemento: ref.elemento } : null;
+            })
+            .filter(Boolean)
+        : [];
 
     periciasSelecionadas = Array.isArray(salvo.periciasSelecionadas) ? salvo.periciasSelecionadas : [];
 
@@ -777,7 +826,9 @@ function mostrarArmas() {
     const categorias = ["Corte", "Haste", "Distância", "Impacto"];
 
     lista.innerHTML = categorias.map(categoria => {
-        const armasDaCategoria = listaDeArmas.filter(arma => arma.categoria === categoria);
+        const armasDaCategoria = listaDeArmas
+            .filter(arma => arma.categoria === categoria)
+            .sort((a, b) => a.nivel - b.nivel);
         if (armasDaCategoria.length === 0) return "";
 
         const itensHTML = armasDaCategoria.map(arma => {
@@ -2214,6 +2265,702 @@ const classes = {
 };
 
 // ============================================================
+// TALENTOS (escolhíveis nos slots "Poder de Combatente/Especialista/Ocultista")
+// ============================================================
+const talentos = {
+    combatente: [
+        { nome: `Golpe Pesado`, desc: `gasta 1 PE para adicionar seu Vigor como dano extra em um ataque corpo a corpo.` },
+        { nome: `Mira Firme`, desc: `ganha +2 em testes de Pontaria a até médio alcance.` },
+        { nome: `Fôlego de Guerra`, desc: `recupera 1d6 PV ao início do combate, uma vez por cena.` },
+        { nome: `Passo de Combate`, desc: `pode se mover metade do deslocamento como ação livre uma vez por rodada.` },
+        { nome: `Guarda Alta`, desc: `enquanto usa arma e escudo, ganha +1 na Defesa.` },
+        { nome: `Golpe Duplo`, desc: `uma vez por cena, pode atacar duas vezes com uma ação padrão (segundo ataque com -5).` },
+        { nome: `Sangue Frio`, desc: `ganha resistência a efeitos de medo em combate.` },
+        { nome: `Marca do Caçador`, desc: `o primeiro ataque contra um alvo específico na cena ganha +1d6 de dano.` },
+        { nome: `Domínio Expandido`, desc: `Escolha 2 perícias adicionais para se tornar treinado. Pode escolher este talento mais de uma vez.`, repetivel: true },
+    ],
+    especialista: [
+        { nome: `Leitura Rápida`, desc: `reduz pela metade o tempo de pesquisas e investigações.` },
+        { nome: `Mãos Habilidosas`, desc: `ganha +2 em testes para consertar ou construir objetos.` },
+        { nome: `Fala Convincente`, desc: `ganha +2 em testes de Diplomacia ou Enganação.` },
+        { nome: `Memória de Ferro`, desc: `nunca esquece algo que já leu ou ouviu com atenção.` },
+        { nome: `Primeiros Socorros`, desc: `pode gastar 1 PE e uma ação padrão para curar 1d8 PV de um aliado adjacente.` },
+        { nome: `Olhar Atento`, desc: `ganha +2 em testes de Percepção e Investigação.` },
+        { nome: `Contato Local`, desc: `uma vez por sessão, conhece alguém útil em qualquer vila já visitada.` },
+        { nome: `Mente Rápida`, desc: `ganha +2 em testes de Iniciativa.` },
+        { nome: `Domínio Expandido`, desc: `Escolha 2 perícias adicionais para se tornar treinado. Pode escolher este talento mais de uma vez.`, repetivel: true },
+    ],
+    ocultista: [
+        { nome: `Sentir o Invisível`, desc: `uma vez por cena, percebe a presença de algo sobrenatural nas proximidades.` },
+        { nome: `Amuleto Pessoal`, desc: `cria um amuleto simples que concede +1 em testes de resistência sobrenatural.` },
+        { nome: `Fôlego Espiritual`, desc: `recupera 1d6 PE ao início do combate, uma vez por cena.` },
+        { nome: `Palavra de Contenção`, desc: `gasta PE para impedir a passagem de uma entidade menor por 1 rodada.` },
+        { nome: `Visão Parcial`, desc: `pode enxergar entidades invisíveis/etéreas por alguns instantes, uma vez por cena.` },
+        { nome: `Resistência ao Horror`, desc: `ganha +2 em testes de resistência contra perda de Sanidade.` },
+        { nome: `Segundo Fôlego`, desc: `uma vez por dia, recupera PE igual à metade do seu Intelecto.` },
+        { nome: `Marca Ritualística`, desc: `ganha +1 em testes para realizar rituais.` },
+        { nome: `Domínio Expandido`, desc: `Escolha 2 perícias adicionais para se tornar treinado. Pode escolher este talento mais de uma vez.`, repetivel: true },
+    ],
+};
+
+// ============================================================
+// TRILHAS (escolhíveis nos slots "Habilidade de Trilha", poderes em NEX 10/40/65/99)
+// ============================================================
+const trilhas = {
+    combatente: [
+        {
+            nome: `Espadachim`,
+            flavor: `Combate corpo a corpo com uma única arma, priorizando velocidade e precisão sobre força bruta.`,
+            poderes: [
+                { nex: 10, titulo: `Corte Certeiro`, efeito: `Uma vez por rodada, gaste 1 PE para adicionar +1d6 de dano a um ataque corpo a corpo com arma leve.` },
+                { nex: 40, titulo: `Reflexo de Lâmina`, efeito: `Pode usar uma reação para se esquivar automaticamente de um ataque corpo a corpo, uma vez por cena.` },
+                { nex: 65, titulo: `Golpe Decisivo`, efeito: `Contra um alvo com menos da metade do PV máximo, seus ataques corpo a corpo causam +2d6 de dano.` },
+                { nex: 99, titulo: `Um Só Corte`, efeito: `Uma vez por dia, declare um ataque corpo a corpo como automaticamente certeiro (role apenas o dano).` },
+            ]
+        },
+        {
+            nome: `Sentinela`,
+            flavor: `Protetores de portões, vilas e senhores, treinados para aguentar o que os outros não suportariam.`,
+            poderes: [
+                { nex: 10, titulo: `Postura Firme`, efeito: `Enquanto usa armadura pesada, ganha +1 na Defesa e RD 1 contra armas físicas.` },
+                { nex: 40, titulo: `Escudo Vivo`, efeito: `Uma vez por rodada, pode gastar uma reação para sofrer o dano de um ataque destinado a um aliado adjacente.` },
+                { nex: 65, titulo: `Muralha`, efeito: `Não pode ser movido à força e ganha RD adicional de 2 contra dano físico.` },
+                { nex: 99, titulo: `Não Vou Cair`, efeito: `Uma vez por sessão, ignora um ataque que o reduziria a 0 PV.` },
+            ]
+        },
+        {
+            nome: `Atirador`,
+            flavor: `Especialista em arcos, fundas e armas de longo alcance — vence a batalha antes que o inimigo chegue perto.`,
+            poderes: [
+                { nex: 10, titulo: `Tiro Preciso`, efeito: `Gaste 1 PE para ignorar penalidades de alcance longo em um ataque à distância.` },
+                { nex: 40, titulo: `Tiro Duplo`, efeito: `Uma vez por cena, pode disparar duas flechas/projéteis em uma única ação padrão contra o mesmo alvo.` },
+                { nex: 65, titulo: `Olho de Falcão`, efeito: `Ataques à distância contra alvos surpreendidos causam +2d6 de dano.` },
+                { nex: 99, titulo: `Flecha que Não Erra`, efeito: `Uma vez por dia, um ataque à distância acerta automaticamente e causa dano máximo.` },
+            ]
+        },
+        {
+            nome: `Lutador`,
+            flavor: `Combate desarmado, aprendido em treinos duros ou nas ruas — o corpo é a única arma que nunca pode ser tomada.`,
+            poderes: [
+                { nex: 10, titulo: `Punho de Ferro`, efeito: `Ataques desarmados causam 1d8 de dano e contam como armas leves.` },
+                { nex: 40, titulo: `Contra-Golpe`, efeito: `Uma vez por rodada, se for atacado corpo a corpo e errarem, pode gastar 1 PE para atacar de volta imediatamente.` },
+                { nex: 65, titulo: `Ruptura`, efeito: `Seus ataques desarmados ignoram metade da RD do alvo.` },
+                { nex: 99, titulo: `Golpe que Quebra Ossos`, efeito: `Uma vez por dia, um ataque desarmado bem-sucedido derruba e atordoa o alvo por 1 rodada.` },
+            ]
+        },
+        {
+            nome: `Vanguarda`,
+            flavor: `Mestres da lança e da alabarda, controlam a distância do combate mantendo os inimigos longe do próprio corpo.`,
+            poderes: [
+                { nex: 10, titulo: `Alcance Superior`, efeito: `Armas de haste longa ganham 1,5m adicional de alcance sem penalidade.` },
+                { nex: 40, titulo: `Investida`, efeito: `Ao se mover em linha reta antes de atacar, ganha +1d6 de dano no ataque.` },
+                { nex: 65, titulo: `Guarda de Lança`, efeito: `Uma vez por rodada, pode atacar automaticamente um inimigo que entre em seu alcance.` },
+                { nex: 99, titulo: `Lança que Atravessa`, efeito: `Uma vez por dia, um ataque bem-sucedido atinge também um segundo alvo alinhado atrás do primeiro.` },
+            ]
+        },
+    ],
+    especialista: [
+        {
+            nome: `Copista`,
+            flavor: `Guardam registros que o poder tentou apagar — sabem nomes, datas e segredos que ninguém mais lembra.`,
+            poderes: [
+                { nex: 10, titulo: `Registro Vivo`, efeito: `Uma vez por sessão, "lembra" de uma informação histórica relevante à cena (fornecida pelo mestre).` },
+                { nex: 40, titulo: `Arquivo Mental`, efeito: `Gaste 1 PE para automaticamente ter sucesso em um teste de conhecimento de dificuldade fácil ou média.` },
+                { nex: 65, titulo: `Segredo Exposto`, efeito: `Uma vez por sessão, revela uma fraqueza oculta de um NPC ou criatura relevante.` },
+                { nex: 99, titulo: `Biblioteca Viva`, efeito: `Nunca precisa de teste para lembrar informações já reveladas na campanha, e fica imune a efeitos de esquecimento.` },
+            ]
+        },
+        {
+            nome: `Batedor`,
+            flavor: `Espiões e mensageiros que se movem sem serem vistos entre feudos rivais.`,
+            poderes: [
+                { nex: 10, titulo: `Passo Leve`, efeito: `Ganha +2 em testes de Furtividade.` },
+                { nex: 40, titulo: `Golpe Surpresa`, efeito: `Ataques contra alvos desprevenidos causam +2d6 de dano.` },
+                { nex: 65, titulo: `Fuga Perfeita`, efeito: `Uma vez por cena, pode sair de um combate sem provocar ataques de oportunidade e sem ser detectado.` },
+                { nex: 99, titulo: `Sombra`, efeito: `Uma vez por sessão, torna-se indetectável (visão, audição, rastreamento) por 1 minuto.` },
+            ]
+        },
+        {
+            nome: `Socorrista`,
+            flavor: `Treinados em tratar ferimentos no meio do caos, valiosos em qualquer grupo que enfrente o perigo.`,
+            poderes: [
+                { nex: 10, titulo: `Atendimento Rápido`, efeito: `Gaste uma ação padrão e 2 PE para curar 2d10 PV de si ou de um aliado adjacente.` },
+                { nex: 40, titulo: `Tratamento Avançado`, efeito: `Gaste uma ação padrão e 2 PE para remover uma condição negativa (exceto morrendo) de um aliado adjacente.` },
+                { nex: 65, titulo: `Resgate`, efeito: `Uma vez por rodada, pode se mover até um aliado ferido usando uma ação livre.` },
+                { nex: 99, titulo: `Reanimação`, efeito: `Uma vez por cena, gaste uma ação completa e 10 PE para trazer de volta um personagem morto na mesma cena. Ressuscitar cobra um preço alto: você envelhece 2 anos automaticamente ao usar este poder.` },
+            ]
+        },
+        {
+            nome: `Negociador`,
+            flavor: `Negociadores hábeis, capazes de resolver com palavras o que outros só resolveriam com lâminas.`,
+            poderes: [
+                { nex: 10, titulo: `Palavra Certa`, efeito: `Gaste uma ação completa e 1 PE para tentar acalmar ou persuadir um alvo em alcance curto (teste de Diplomacia contra Vontade).` },
+                { nex: 40, titulo: `Discurso`, efeito: `Gaste uma ação padrão e 4 PE para inspirar aliados em alcance curto, concedendo +2 em testes de perícia até o fim da cena.` },
+                { nex: 65, titulo: `Contatos Úteis`, efeito: `Uma vez por missão, ativa sua rede de contatos para conseguir um favor (equipamento, informação, abrigo).` },
+                { nex: 99, titulo: `Mestre da Palavra`, efeito: `Gaste 5 PE para simular uma habilidade que viu um aliado usar durante a cena.` },
+            ]
+        },
+        {
+            nome: `Artesão`,
+            flavor: `Cuidam do equipamento do grupo e sabem improvisar ferramentas com o que tiverem em mãos.`,
+            poderes: [
+                { nex: 10, titulo: `Inventário Eficiente`, efeito: `Soma Intelecto à Força para calcular sua capacidade de carga.` },
+                { nex: 40, titulo: `Reparo Rápido`, efeito: `Gaste uma ação completa e 1 PE para remover a condição "quebrado" de um equipamento.` },
+                { nex: 65, titulo: `Improviso`, efeito: `Gaste uma ação completa e PE para criar uma versão funcional temporária de um equipamento geral.` },
+                { nex: 99, titulo: `Sempre Preparado`, efeito: `Gaste uma ação de movimento e PE para "lembrar" que carregava um item não-arma necessário no momento.` },
+            ]
+        },
+    ],
+    ocultista: [
+        {
+            nome: `Purificador`,
+            flavor: `Servem a manter o equilíbrio entre o mundo visível e o que espreita por trás dele.`,
+            poderes: [
+                { nex: 10, titulo: `Selo Simples`, efeito: `Gaste PE para criar uma barreira que impede a passagem de uma entidade menor por 1 rodada.` },
+                { nex: 40, titulo: `Purificação`, efeito: `Gaste PE para curar 1d8 de dano de Sanidade em si mesmo ou aliado, uma vez por cena.` },
+                { nex: 65, titulo: `Exorcismo`, efeito: `Gaste PE para forçar uma entidade menor ou média a recuar por uma cena inteira.` },
+                { nex: 99, titulo: `Selo Absoluto`, efeito: `Uma vez por sessão, sela completamente uma entidade por um tempo prolongado.` },
+            ]
+        },
+        {
+            nome: `Eremita`,
+            flavor: `Vivem isolados, falando com espíritos da natureza que os homens da cidade esqueceram como ouvir.`,
+            poderes: [
+                { nex: 10, titulo: `Voz da Mata`, efeito: `Pode se comunicar de forma básica com espíritos da natureza próximos.` },
+                { nex: 40, titulo: `Toque Curativo`, efeito: `Gaste PE para curar 2d6 PV de si mesmo ou de um aliado, uma vez por cena.` },
+                { nex: 65, titulo: `Fúria da Terra`, efeito: `Uma vez por dia, canaliza dano extra igual ao seu Vigor em um ataque corpo a corpo.` },
+                { nex: 99, titulo: `Um com a Montanha`, efeito: `Uma vez por sessão, regenera todo o PV e PE perdidos instantaneamente.` },
+            ]
+        },
+        {
+            nome: `Sensitivo`,
+            flavor: `Enxergam fragmentos do que foi e do que será — um dom tão útil quanto perigoso para a própria mente.`,
+            poderes: [
+                { nex: 10, titulo: `Vislumbre`, efeito: `Uma vez por cena, gaste PE para receber uma pista visual breve sobre o que está por vir na cena atual.` },
+                { nex: 40, titulo: `Leitura de Objeto`, efeito: `Ao tocar um objeto significativo, pode gastar PE para receber uma impressão de seu passado recente.` },
+                { nex: 65, titulo: `Presságio`, efeito: `Uma vez por sessão, prevê um evento próximo relevante à trama (a critério do mestre).` },
+                { nex: 99, titulo: `Olhos Além do Tempo`, efeito: `Uma vez por sessão, pode repetir um teste de qualquer personagem na cena, escolhendo o melhor resultado.` },
+            ]
+        },
+        {
+            nome: `Médium`,
+            flavor: `Conversam com os mortos — e, às vezes, os mortos respondem coisas que não deveriam ser ouvidas.`,
+            poderes: [
+                { nex: 10, titulo: `Sussurro dos Mortos`, efeito: `Uma vez por cena, gaste PE para fazer uma pergunta simples a um espírito próximo ao local de sua morte.` },
+                { nex: 40, titulo: `Corpo Emprestado`, efeito: `Gaste PE para permitir que um espírito aliado se comunique brevemente através de você.` },
+                { nex: 65, titulo: `Proteção dos Ancestrais`, efeito: `Uma vez por cena, gaste PE para ganhar RD 3 contra um único ataque sobrenatural.` },
+                { nex: 99, titulo: `Ponte Entre Mundos`, efeito: `Uma vez por sessão, pode trazer um espírito para lutar ao seu lado por uma cena.` },
+            ]
+        },
+        {
+            nome: `Vinculador`,
+            flavor: `Especialistas em conter, prender e neutralizar o que é perigoso demais para ser destruído.`,
+            poderes: [
+                { nex: 10, titulo: `Marca de Contenção`, efeito: `Gaste PE para marcar um alvo; enquanto marcado, ele sofre penalidade em testes para escapar de prisões ou selos.` },
+                { nex: 40, titulo: `Corrente Espiritual`, efeito: `Gaste PE para imobilizar uma entidade menor por 1 rodada.` },
+                { nex: 65, titulo: `Prisão Ritual`, efeito: `Gaste PE e uma ação completa para prender uma entidade média em um objeto próximo por uma cena.` },
+                { nex: 99, titulo: `Selo Eterno`, efeito: `Uma vez por sessão, prende permanentemente uma entidade derrotada, impedindo seu retorno.` },
+            ]
+        },
+    ],
+};
+
+// ============================================================
+// RITUAIS (organizados por elemento — Terra, Água, Fogo, Vento, Vazio)
+// ============================================================
+const rituais = {
+    terra: [
+        {
+            nome: `Abrigo de Pedra`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: curto • Efeito: abrigo de 3m de diâmetro • Duração: cena`,
+            descricao: `Você ergue um pequeno abrigo de pedra e terra compactada, resistente a impactos e intempéries. Tem RD 5 e 20 PV, e protege quem está dentro de vento, chuva e detritos.`,
+            consagracao: `+3 PE: o abrigo dobra de tamanho e a RD aumenta para 8. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Amarras da Terra`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: curto • Alvo: 1 ser • Duração: 1 rodada • Resistência: Reflexos evita`,
+            descricao: `Raízes e pedras emergem do chão e prendem os pés do alvo, que fica com deslocamento 0 até se soltar (ação padrão + teste de Força ou Atletismo).`,
+            consagracao: `+2 PE: afeta até 3 seres em área curta. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Muralha de Argila`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: curto • Efeito: parede de 6m de comprimento, 3m de altura • Duração: cena`,
+            descricao: `Uma parede de terra endurecida se ergue do chão, bloqueando passagem e linha de visão. Tem RD 6 e 40 PV.`,
+            consagracao: `+3 PE: a parede dobra de tamanho e ganha RD 10. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Tremor`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: médio • Área: esfera de 6m de raio • Duração: instantânea • Resistência: Reflexos reduz à metade`,
+            descricao: `O chão sacode violentamente. Seres na área sofrem 4d8 de dano de impacto e caem prostrados se falharem no teste.`,
+            consagracao: `+4 PE: aumenta o dano para 6d8 e a área para 9m de raio. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Armadura de Pedra`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: pessoal • Duração: cena`,
+            descricao: `Placas de pedra brotam sobre seu corpo, formando uma armadura natural. Você ganha RD 8 contra dano físico e +2 na Defesa, mas seu deslocamento é reduzido em 3m enquanto durar.`,
+            consagracao: `+6 PE: a RD aumenta para 12 e você ganha 20 PV temporários. Requer 4º círculo.`,
+            colateral: `seus músculos ficam rígidos após o esforço: -2 em testes de Acrobacia até o final do próximo turno.`
+        },
+        {
+            nome: `Túmulo Vivo`,
+            circulo: 4,
+            detalhes: `Execução: padrão • Alcance: curto • Alvo: 1 ser • Duração: sustentada • Resistência: Fortitude parcial`,
+            descricao: `A terra se abre e engole o alvo até o pescoço. Se falhar na resistência, fica completamente imóvel e enterrado, sofrendo 2d8 de dano de impacto por rodada; se passar, fica apenas preso (desloc. 0), sem dano contínuo.`,
+            consagracao: `+7 PE: o alvo é puxado inteiramente para dentro da terra, sufocando (regras de sufocamento) até se libertar com um teste de Fortitude no seu turno. Requer afinidade.`,
+            colateral: `canalizar tanta terra de uma vez deixa você Fatigado até o final da cena. Se o alvo resistir por completo, você sofre 1d8 de dano de impacto e fica preso (desloc. 0) por 1 rodada.`
+        },
+        {
+            nome: `Espinhos do Chão`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: curto • Alvo: 1 ser • Duração: instantânea • Resistência: Reflexos evita metade`,
+            descricao: `Pontas de pedra brotam sob os pés do alvo, causando 2d8 de dano de impacto e perfuração. Se falhar, também fica preso (desloc. 0) até se soltar com uma ação padrão e teste de Força ou Atletismo.`,
+            consagracao: `+3 PE: dano aumenta para 4d8. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Fôlego da Terra`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: toque • Alvo: 1 ser • Duração: 3 rodadas (máximo por conjuração)`,
+            descricao: `Enquanto em contato com o solo, o alvo recupera 1d6 PV no início de cada um dos seus turnos, até o limite de 3 rodadas.`,
+            consagracao: `+3 PE: cura aumenta para 2d6 PV/turno. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Enxame Subterrâneo`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: médio • Área: esfera de 6m • Duração: cena`,
+            descricao: `Formas de terra emergem e tentam agarrar quem estiver na área (teste de Ocultismo vs. cada alvo, no início dos seus turnos).`,
+            consagracao: `+4 PE: área aumenta para 9m e alvos agarrados sofrem 1d6 de dano por rodada. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Peso da Montanha`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: curto • Alvo: 1 ser • Duração: cena • Resistência: Fortitude evita`,
+            descricao: `O corpo do alvo fica pesado como pedra: deslocamento reduzido pela metade, não pode voar ou levitar.`,
+            consagracao: `+3 PE: também zera natação e escalada; resistência passa a ser parcial. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Decomposição`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: médio • Área: esfera de 9m • Duração: instantânea`,
+            descricao: `Vegetação e matéria orgânica apodrecem e o solo vira lama (terreno difícil pelo resto da cena).`,
+            consagracao: `+5 PE: também causa 3d8 de dano de Morte a seres vivos na área (Fortitude reduz à metade). Requer 4º círculo.`,
+            colateral: `o cheiro de podridão o deixa enjoado por 1 rodada: -2 em testes baseados em Percepção.`
+        },
+        {
+            nome: `Sepultamento Total`,
+            circulo: 4,
+            detalhes: `Execução: completa • Alcance: médio • Área: esfera de 9m • Duração: sustentada • Resistência: Fortitude parcial`,
+            descricao: `Versão em área do Túmulo Vivo — quem falhar na resistência fica enterrado e imóvel (2d8 de dano por rodada); quem passar fica só preso.`,
+            consagracao: `+8 PE: enterrados também começam a sufocar (regras de sufocamento). Requer afinidade.`,
+            colateral: `controlar tanta terra de uma vez esgota você por completo: fica Exausto até o final da cena. Alvos que resistirem por completo causam o mesmo contra você: 1d8 de dano e preso por 1 rodada.`
+        },
+    ],
+    agua: [
+        {
+            nome: `Orvalho Curativo`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: toque • Alvo: 1 ser • Duração: instantânea`,
+            descricao: `Gotas de água luminosa escorrem sobre o alvo, fechando ferimentos. Cura 2d6 PV.`,
+            consagracao: `+2 PE: cura 4d6 PV, mas o alvo envelhece 1 mês automaticamente. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Purificador do Ar`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: curto • Área: esfera de 6m de raio • Duração: cena`,
+            descricao: `Uma névoa de água pura se espalha pela área, neutralizando fumaça, gases tóxicos e odores nocivos, tornando o ar seguro para respirar.`,
+            consagracao: `+2 PE: também cura 1d8 de dano por rodada a quem permanecer respirando o ar purificado. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Véu de Neblina`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: médio • Área: nuvem de 9m de raio • Duração: cena`,
+            descricao: `Uma névoa densa e fria cobre a área. Seres dentro dela têm camuflagem leve contra ataques vindos de fora.`,
+            consagracao: `+3 PE: a névoa se torna espessa, concedendo camuflagem total, e reduz o deslocamento de quem não a conhece pela metade. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Sangue Diluído`,
+            circulo: 2,
+            detalhes: `Execução: reação • Alcance: pessoal ou toque • Alvo: você ou 1 aliado • Duração: instantânea`,
+            descricao: `Ao ser atingido, seu corpo dilui parte do dano em água. Reduz o dano de um único ataque em 15 pontos.`,
+            consagracao: `+3 PE: reduz o dano em 30 pontos. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Maré Purificadora`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: curto • Área: esfera de 6m de raio • Duração: instantânea`,
+            descricao: `Uma onda de água pura varre a área. Aliados na área curam 2d8 PV.`,
+            consagracao: `+5 PE: cura aumenta para 4d8 PV e remove uma condição negativa à escolha, mas cada aliado curado envelhece 6 meses automaticamente. Requer 4º círculo.`,
+            colateral: `canalizar a onda drena você também: -2 em testes até o final do seu próximo turno.`
+        },
+        {
+            nome: `Abismo Líquido`,
+            circulo: 4,
+            detalhes: `Execução: padrão • Alcance: médio • Área: círculo de 6m de raio • Duração: sustentada • Resistência: Fortitude parcial`,
+            descricao: `Um vórtice de água surge no chão, puxando tudo ao redor para dentro. Seres na área devem ser bem-sucedidos em um teste de Fortitude ou ficam agarrados e começam a se afogar; mesmo passando, sofrem 4d10 de dano de água por rodada dentro do vórtice.`,
+            consagracao: `+7 PE: o vórtice dobra de área e o dano aumenta para 6d10. Requer afinidade.`,
+            colateral: `você sofre 1d10 de dano de água ao conjurar — parte da força do vórtice passa pelo seu próprio corpo. Se o alvo resistir com sucesso, você também sofre 2d10 de dano e fica agarrado por 1 rodada.`
+        },
+        {
+            nome: `Espelho Líquido`,
+            circulo: 1,
+            detalhes: `Execução: completa • Alcance: pessoal • Efeito: poça de até 1m² • Duração: cena`,
+            descricao: `Cria uma superfície que mostra um local já visitado por você (só imagem, sem som).`,
+            consagracao: `+3 PE: também transmite som, e não exige mais que você já tenha visitado o local. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Laço de Sangue e Água`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: curto • Alvo: 2 seres • Duração: cena • Resistência: Vontade anula (se involuntário)`,
+            descricao: `Vincula dois seres: o dano sofrido por um deles é dividido meio a meio com o outro pelo resto da duração.`,
+            consagracao: `+4 PE: você pode encerrar o vínculo a qualquer momento; a duração passa a "até ser encerrado". Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Disfarce das Marés`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: pessoal • Duração: cena • Resistência: Vontade desacredita`,
+            descricao: `Seu corpo muda de forma como água corrente. Recebe +5 em testes de Enganação para manter um disfarce genérico.`,
+            consagracao: `+3 PE: pode imitar uma pessoa específica já observada; o bônus aumenta para +10. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Dreno Vital`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: toque • Alvo: 1 ser • Duração: instantânea • Resistência: Fortitude reduz à metade`,
+            descricao: `Causa 4d8 de dano de água ao alvo e você recupera PV igual à metade do dano causado.`,
+            consagracao: `+4 PE: o dano aumenta para 6d8. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Maré Congelante`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: médio • Área: esfera de 9m • Duração: cena`,
+            descricao: `Toda água na área congela instantaneamente; o chão fica escorregadio (terreno difícil) e quem estava nadando fica preso no gelo.`,
+            consagracao: `+5 PE: também causa 4d8 de dano a quem ficou preso no momento da conjuração. Requer 4º círculo.`,
+            colateral: `o frio também alcança você: seu deslocamento é reduzido em 1,5m até o final da cena.`
+        },
+        {
+            nome: `Dilúvio`,
+            circulo: 4,
+            detalhes: `Execução: completa • Alcance: longo • Área: esfera de 18m • Duração: sustentada • Resistência: Fortitude parcial`,
+            descricao: `Uma onda empurra tudo 9m na direção escolhida e causa 6d10 de dano (metade se passar na resistência); quem falhar começa a se afogar nas rodadas seguintes.`,
+            consagracao: `+10 PE: o raio aumenta para 27m e o dano para 9d10. Requer afinidade.`,
+            colateral: `mover tamanha quantidade de água drena sua força vital: sofre 10 PV de dano, sem teste de resistência. Se o alvo resistir, você também sofre 3d10 de dano de água (metade do dano base).`
+        },
+    ],
+    fogo: [
+        {
+            nome: `Fagulha`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: toque • Alvo: 1 arma corpo a corpo • Duração: cena`,
+            descricao: `Você imbui uma arma com chamas. Ela passa a causar +1d6 de dano de fogo.`,
+            consagracao: `+2 PE: o bônus aumenta para +2d6. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Brasas Vivas`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: curto • Alvo: 1 ser • Duração: cena • Resistência: Reflexos evita`,
+            descricao: `Pequenas brasas se agarram ao corpo do alvo, causando 1d8 de dano de fogo no início de cada um de seus turnos.`,
+            consagracao: `+2 PE: o dano aumenta para 2d8. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Explosão Contida`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: médio • Área: esfera de 6m de raio • Duração: instantânea • Resistência: Reflexos reduz à metade`,
+            descricao: `Uma bola de fogo se forma e explode, causando 5d8 de dano de fogo a todos na área.`,
+            consagracao: `+4 PE: o dano aumenta para 8d8. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Lâmina Incandescente`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: toque • Alvo: 1 arma corpo a corpo • Duração: cena`,
+            descricao: `A arma do alvo se torna incandescente, ganhando +3 em testes de dano e ignorando metade da RD contra dano de fogo.`,
+            consagracao: `+3 PE: ignora toda a RD contra dano de fogo. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Fúria das Chamas`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: médio • Área: cone de 9m • Duração: instantânea • Resistência: Reflexos reduz à metade`,
+            descricao: `Um jato de fogo intenso varre a área em cone, causando 8d10 de dano de fogo e ignorando metade da RD dos alvos.`,
+            consagracao: `+6 PE: o dano aumenta para 12d10 e ignora toda a RD. Requer 4º círculo.`,
+            colateral: `o calor do próprio jato o atinge de volta: -2 em testes de Reflexos até o final do seu próximo turno.`
+        },
+        {
+            nome: `Cinzas do Fim`,
+            circulo: 4,
+            detalhes: `Execução: completa • Alcance: longo • Área: esfera de 12m de raio • Duração: instantânea • Resistência: Fortitude reduz à metade`,
+            descricao: `Uma coluna de fogo desce sobre a área, incinerando tudo. Causa 15d10 de dano de fogo e destrói objetos inflamáveis automaticamente.`,
+            consagracao: `+9 PE: o dano aumenta para 20d10. Alvos reduzidos a 0 PV por este dano são reduzidos a cinzas. Requer afinidade.`,
+            colateral: `o calor da coluna de fogo atinge até você: sofre metade do dano do ritual automaticamente, sem direito a teste de resistência.`
+        },
+        {
+            nome: `Marca Incandescente`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: toque • Alvo: 1 ser • Duração: cena • Resistência: Reflexos evita`,
+            descricao: `Uma marca em brasa causa 1d6 de dano de fogo no início de cada turno do alvo.`,
+            consagracao: `+2 PE: o dano aumenta para 2d6. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Fôlego de Brasa`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: curto • Área: cone de 4,5m • Duração: instantânea • Resistência: Reflexos reduz à metade`,
+            descricao: `Uma rajada de fogo em cone causa 3d8 de dano.`,
+            consagracao: `+3 PE: o dano aumenta para 5d8. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Cortina de Fumaça`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: curto • Área: nuvem de 6m • Duração: cena`,
+            descricao: `Uma fumaça densa concede camuflagem total contra ataques vindos de fora da área.`,
+            consagracao: `+3 PE: também causa 1d6 de dano por rodada a quem respirar a fumaça sem proteção. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Fúria Ardente`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: pessoal • Duração: cena`,
+            descricao: `Você ganha +2 em dano corpo a corpo e resistência a fogo 5, mas deve atacar o inimigo mais próximo em cada um dos seus turnos.`,
+            consagracao: `+4 PE: o bônus de dano vira +5 e a resistência vira 10. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Forma de Cinzas`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: pessoal • Duração: 3 rodadas`,
+            descricao: `Seu corpo se transforma em uma nuvem de cinzas: fica imune a dano físico, mas não pode atacar nem conjurar rituais enquanto durar.`,
+            consagracao: `+5 PE: a duração aumenta para 5 rodadas e você pode realizar um ataque por rodada. Requer 4º círculo.`,
+            colateral: `voltar a ter um corpo sólido desorienta: -2 em testes de ataque até o final do seu próximo turno.`
+        },
+        {
+            nome: `Sol Interior`,
+            circulo: 4,
+            detalhes: `Execução: completa • Alcance: pessoal • Área: esfera de 12m centrada em você • Duração: instantânea • Resistência: Reflexos reduz à metade`,
+            descricao: `Uma explosão de calor intenso: 10d10 de dano a todos na área, incluindo você (que pode optar por sofrer automaticamente metade do dano, sem precisar de teste).`,
+            consagracao: `+9 PE: o dano aumenta para 14d10 e você se torna automaticamente imune. Requer afinidade.`,
+            colateral: `sua pele fica queimada e sensível: você fica Vulnerável a dano de fogo até o final da próxima cena.`
+        },
+    ],
+    vento: [
+        {
+            nome: `Passo do Vento`,
+            circulo: 1,
+            detalhes: `Execução: livre • Alcance: pessoal • Duração: cena`,
+            descricao: `O vento sopra a seu favor. Seu deslocamento aumenta em 3m.`,
+            consagracao: `+2 PE: o aumento passa para 6m e você ignora penalidades de terreno difícil. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Lâmina de Vento`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: pessoal • Duração: cena`,
+            descricao: `Você condensa uma lâmina de ar comprimido nas mãos, funcionando como uma arma corpo a corpo leve que causa 1d8 de dano de corte.`,
+            consagracao: `+2 PE: o dano aumenta para 2d8 e a lâmina ganha alcance curto, permitindo ataques à distância. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Sopro Rastreador`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: pessoal • Área: esfera de 18m de raio • Duração: cena`,
+            descricao: `Você sente cada perturbação no ar ao seu redor. Ganha percepção automática da posição aproximada de qualquer ser que se mova dentro da área, mesmo sem linha de visão ou através de paredes finas.`,
+            consagracao: `+4 PE: a área aumenta para 30m de raio e você também percebe a direção e velocidade do movimento de cada ser detectado. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Voo Breve`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: pessoal • Duração: 3 rodadas`,
+            descricao: `Você é envolto por correntes de ar e ganha deslocamento de voo de 9m durante a duração.`,
+            consagracao: `+3 PE: a duração aumenta para cena inteira. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Tempestade Cortante`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: médio • Área: esfera de 9m de raio • Duração: instantânea • Resistência: Reflexos reduz à metade`,
+            descricao: `Lâminas de vento cortam tudo na área, causando 8d8 de dano de corte.`,
+            consagracao: `+5 PE: o dano aumenta para 12d8. Requer 4º círculo.`,
+            colateral: `as lâminas também arranham você de raspão: sofre 1d6 de dano de corte.`
+        },
+        {
+            nome: `Vendaval Absoluto`,
+            circulo: 4,
+            detalhes: `Execução: completa • Alcance: longo • Área: esfera de 18m de raio • Duração: sustentada • Resistência: Fortitude parcial`,
+            descricao: `Você invoca uma tempestade violenta. Seres na área sofrem 6d10 de dano de vento por rodada e devem ser bem-sucedidos em um teste de Fortitude ou são derrubados e desarmados.`,
+            consagracao: `+8 PE: o raio aumenta para 27m e o dano para 8d10. Requer afinidade.`,
+            colateral: `quando a tempestade se dissipa, o esforço cobra o preço: você fica Atordoado por 1 rodada. Alvos que resistirem por completo (sem serem derrubados/desarmados) causam 3d10 de dano de vento contra você (metade do dano base).`
+        },
+        {
+            nome: `Sussurro Levado pelo Vento`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: ilimitado (mesma região) • Alvo: 1 pessoa conhecida • Duração: instantânea`,
+            descricao: `O vento leva uma mensagem curta até o alvo, não importa a distância entre vocês, desde que estejam na mesma região.`,
+            consagracao: `+3 PE: permite uma resposta do alvo, criando uma troca de mensagens curtas por 1 minuto. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Passo Fantasma`,
+            circulo: 1,
+            detalhes: `Execução: reação • Alcance: pessoal • Duração: instantânea`,
+            descricao: `Ao ser atacado, você se dissolve brevemente em vento e reaparece em um espaço adjacente, ganhando +5 na Defesa contra o ataque que o disparou.`,
+            consagracao: `+2 PE: o bônus na Defesa aumenta para +10. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Coro Falso`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: médio • Área: esfera de 9m • Duração: cena • Resistência: Vontade desacredita`,
+            descricao: `Cria sons ilusórios simples (vozes, passos, batidas) vindos de qualquer ponto dentro da área.`,
+            consagracao: `+3 PE: os sons podem formar uma cena convincente e coordenada, como uma conversa ou uma perseguição. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Queda Suave`,
+            circulo: 2,
+            detalhes: `Execução: reação • Alcance: curto • Alvo: 1 ser em queda • Duração: instantânea`,
+            descricao: `Anula todo o dano de queda do alvo.`,
+            consagracao: `+3 PE: protege até 3 seres em queda ao mesmo tempo. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Fúria da Tempestade`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: médio • Área: esfera de 9m • Duração: instantânea • Resistência: Reflexos reduz à metade`,
+            descricao: `Raios cortam a área, causando 6d10 de dano; quem falhar na resistência também fica atordoado por 1 rodada.`,
+            consagracao: `+6 PE: o dano aumenta para 9d10. Requer 4º círculo.`,
+            colateral: `a energia residual causa leve dormência: -2 em testes de Agilidade até o final do seu próximo turno.`
+        },
+        {
+            nome: `Olho do Ciclone`,
+            circulo: 4,
+            detalhes: `Execução: completa • Alcance: pessoal • Área: esfera de 18m, você no centro • Duração: sustentada • Resistência: Reflexos parcial`,
+            descricao: `Você e até 4 aliados ficam em uma zona de calmaria imune aos efeitos; inimigos dentro da tempestade ao redor sofrem 4d10 de dano por rodada e têm o deslocamento reduzido pela metade.`,
+            consagracao: `+9 PE: o raio aumenta para 27m e o dano para 6d10. Requer afinidade.`,
+            colateral: `você não pode se afastar do centro da tempestade enquanto o efeito durar; se for forçado a sair, o ritual termina imediatamente e você sofre 2d10 de dano.`
+        },
+    ],
+    vazio: [
+        {
+            nome: `Sussurro do Vazio`,
+            circulo: 1,
+            detalhes: `Execução: completa • Alcance: pessoal • Duração: instantânea`,
+            descricao: `Você escuta ecos do Vazio sobre algo que está prestes a acontecer nesta cena. Recebe uma pista breve do mestre sobre o próximo evento relevante.`,
+            consagracao: `+3 PE: a pista se torna mais clara e detalhada. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Toque Entorpecente`,
+            circulo: 1,
+            detalhes: `Execução: padrão • Alcance: toque • Alvo: 1 ser • Duração: 1 rodada • Resistência: Vontade evita`,
+            descricao: `O alvo sente sua mente esvaziar-se por um instante, sofrendo -5 no próximo teste que fizer.`,
+            consagracao: `+2 PE: a penalidade aumenta para -10. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Domínio Mental`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: médio • Alvo: 1 ser • Duração: 1 rodada • Resistência: Vontade evita`,
+            descricao: `Você impõe sua vontade sobre a mente do alvo, forçando-o a obedecer a um comando simples e não hostil (mover-se, largar um item, ficar parado) em seu próximo turno.`,
+            consagracao: `+4 PE: a duração aumenta para 3 rodadas e você pode incluir um comando que implique risco moderado ao alvo. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Silêncio Absoluto`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: médio • Área: esfera de 6m de raio • Duração: cena`,
+            descricao: `Nenhum som sai ou entra da área. Rituais que exigem palavras não podem ser conjurados dentro dela.`,
+            consagracao: `+3 PE: também impede qualquer forma de comunicação, incluindo telepática. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Fenda do Nada`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: pessoal • Duração: instantânea`,
+            descricao: `Você rasga o espaço por um instante e se teleporta até 18m para um local que possa ver.`,
+            consagracao: `+5 PE: o alcance aumenta para 60m e não exige linha de visão, apenas conhecimento do local. Requer 4º círculo.`,
+            colateral: `atravessar o espaço desorienta os sentidos: fica Vulnerável até o início do seu próximo turno.`
+        },
+        {
+            nome: `Consumir Existência`,
+            circulo: 4,
+            detalhes: `Execução: padrão • Alcance: toque • Alvo: 1 ser • Duração: instantânea • Resistência: Vontade parcial`,
+            descricao: `Você toca o alvo com o Vazio absoluto. Se falhar na resistência, sofre 12d10 de dano direto à sua essência (ignora RD); se passar, sofre metade do dano.`,
+            consagracao: `+8 PE: o dano aumenta para 18d10 e, se isso reduzir o alvo a 0 PV, ele desaparece sem deixar vestígios. Requer afinidade.`,
+            colateral: `tocar o Vazio corrói sua própria mente: perde 1d4 pontos de Sanidade permanentemente, mesmo se o alvo resistir. Se o alvo passar na resistência, você também sofre 6d10 de dano à sua essência (metade do dano base).`
+        },
+        {
+            nome: `Presságio Sombrio`,
+            circulo: 1,
+            detalhes: `Execução: livre • Alcance: pessoal • Duração: instantânea`,
+            descricao: `Você sabe que algo ruim está prestes a acontecer nesta cena, sem detalhes específicos.`,
+            consagracao: `+3 PE: também ganha +5 em testes de Iniciativa e Percepção pelo resto da cena. Requer 2º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Encantar`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: curto • Alvo: 1 pessoa • Duração: cena • Resistência: Vontade anula`,
+            descricao: `O alvo passa a interpretar suas palavras e ações da forma mais favorável possível. Você ganha +10 em testes de Diplomacia contra ele. Qualquer ação hostil sua encerra o efeito.`,
+            consagracao: `+4 PE: o bônus aumenta para +15 e a duração passa a 1 dia. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Terceiro Olho`,
+            circulo: 2,
+            detalhes: `Execução: padrão • Alcance: pessoal • Duração: cena`,
+            descricao: `Seus olhos passam a enxergar auras paranormais em alcance médio — rituais ativos, itens amaldiçoados e criaturas sobrenaturais.`,
+            consagracao: `+3 PE: também enxerga através de ilusões e disfarces de origem sobrenatural. Requer 3º círculo.`,
+            colateral: null
+        },
+        {
+            nome: `Pesadelo Acordado`,
+            circulo: 3,
+            detalhes: `Execução: padrão • Alcance: médio • Alvo: 1 ser • Duração: 1 rodada • Resistência: Vontade reduz à metade`,
+            descricao: `Uma alucinação aterrorizante toma conta do alvo, causando 6d8 de dano mental e deixando-o apavorado por 1 rodada; se passar na resistência, sofre apenas metade do dano e não fica apavorado.`,
+            consagracao: `+5 PE: o dano aumenta para 9d8 e o medo passa a durar 3 rodadas. Requer 4º círculo.`,
+            colateral: `compartilhar o pesadelo tem um custo: -2 em testes de Vontade até o final da cena.`
+        },
+        {
+            nome: `Possuir`,
+            circulo: 4,
+            detalhes: `Execução: padrão • Alcance: curto • Alvo: 1 pessoa • Duração: cena • Resistência: Vontade anula`,
+            descricao: `Você projeta sua consciência para o corpo do alvo e passa a controlá-lo, usando os atributos físicos dele. Se o alvo resistir com sucesso, fica imune a este ritual por 1 dia e sabe que a tentativa ocorreu.`,
+            consagracao: `+6 PE: a duração aumenta para 1 dia. Requer afinidade.`,
+            colateral: `invadir a mente de outra pessoa desgasta a sua: perde 1 ponto de Sanidade permanentemente a cada uso. Se o alvo resistir, o contragolpe da tentativa o deixa Atordoado por 1 rodada (metade do que seria ficar sem controle do próprio corpo).`
+        },
+        {
+            nome: `Apagar`,
+            circulo: 4,
+            detalhes: `Execução: padrão • Alcance: toque • Alvo: 1 ser • Duração: instantânea • Resistência: Vontade parcial`,
+            descricao: `Você toca o alvo tentando apagá-lo da realidade. Causa 10d10 de dano direto à sua essência (ignora RD) se falhar na resistência; metade do dano se passar.`,
+            consagracao: `+10 PE: o dano aumenta para 15d10 e, se isso reduzir o alvo a 0 PV, ele desaparece completamente, sem deixar vestígios. Requer afinidade.`,
+            colateral: `tentar apagar alguém da existência deixa cicatrizes na sua mente: perde 1d6 pontos de Sanidade permanentemente. Se o alvo resistir, você também sofre 5d10 de dano à sua própria essência (metade do dano base).`
+        },
+    ],
+};
+// ============================================================
 // PROGRESSO
 // ============================================================
 
@@ -2221,7 +2968,7 @@ function atualizarProgresso() {
     const barra = document.getElementById("barraProgresso");
     const texto = document.getElementById("textoProgresso");
 
-    const totalEtapas = 8;
+    const totalEtapas = 9;
 
     if (barra) {
         barra.style.width = ((etapaAtual / totalEtapas) * 100) + "%";
@@ -2423,6 +3170,87 @@ function selecionarClasse(classe, elemento) {
 // DETALHES DA CLASSE
 // ============================================================
 
+// Monta o bloco de Habilidade Base + Escolha de Trilha + Tabela de Progressão interativa.
+// Reaproveitado tanto na etapa 03 (Classe) quanto na etapa 06 (Características).
+function renderProgressaoInterativaHTML(classe) {
+    const temProgressao = Array.isArray(classe.progressao) && classe.progressao.length > 0;
+
+    const progressaoHTML = temProgressao
+        ? classe.progressao.map(progresso => {
+            const tipo = tipoLinhaProgressao(progresso.habilidade);
+            return `
+                <div class="linha-nex tipo-${tipo}">
+                    <div class="linha-nex-badge">${progresso.nex}%</div>
+                    <div class="linha-nex-conteudo">${celulaProgressao(progresso)}</div>
+                </div>
+            `;
+        }).join("")
+        : "";
+
+    const trilhasDaCategoria = trilhas[categoriaSelecionada] || [];
+    const trilhaAtual = trilhaSelecionada[categoriaSelecionada];
+    const baseCategoria = habilidadeBaseCategoria[categoriaSelecionada];
+
+    const habilidadeBaseHTML = baseCategoria ? `
+        <div class="classe-secao">
+            <h3>HABILIDADE BASE DA CATEGORIA</h3>
+            <div class="habilidade-item habilidade-base">
+                <h4>${baseCategoria.nome}</h4>
+                <p>${baseCategoria.desc}</p>
+            </div>
+        </div>
+    ` : "";
+
+    const trilhasHTML = trilhasDaCategoria.length > 0 ? `
+        <div class="classe-secao">
+            <h3>ESCOLHA SUA TRILHA</h3>
+            <p class="aviso-vazio">Vale para toda a categoria (${categoriaSelecionada}), não só para esta classe.</p>
+            <div class="lista-trilhas">
+                ${trilhasDaCategoria.map(t => `
+                    <button type="button"
+                            class="card-trilha ${trilhaAtual && trilhaAtual.nome === t.nome ? "selecionada" : ""}"
+                            onclick="selecionarTrilha('${categoriaSelecionada}', '${t.nome.replace(/'/g, "\\'")}')">
+                        <h4>${t.nome}</h4>
+                        <p>${t.flavor}</p>
+                    </button>
+                `).join("")}
+            </div>
+
+            ${trilhaAtual ? `
+                <div class="painel-poderes-trilha">
+                    <h4 class="painel-poderes-trilha-titulo">Poderes de ${trilhaAtual.nome}</h4>
+                    <div class="grade-poderes-trilha">
+                        ${trilhaAtual.poderes.map(p => `
+                            <div class="poder-trilha-item">
+                                <span class="poder-trilha-nex">NEX ${p.nex}%</span>
+                                <strong>${p.titulo}</strong>
+                                <p>${p.efeito}</p>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            ` : ""}
+        </div>
+    ` : "";
+
+    return `
+        ${habilidadeBaseHTML}
+
+        ${trilhasHTML}
+
+        ${temProgressao ? `
+        <div class="classe-secao">
+            <h3>PROGRESSÃO NEX — TRILHA E TALENTOS</h3>
+            <p class="aviso-vazio">Nos slots de Trilha e Talento, escolha diretamente na lista abaixo.</p>
+
+            <div class="lista-progressao-nex">
+                ${progressaoHTML}
+            </div>
+        </div>
+        ` : ""}
+    `;
+}
+
 function mostrarDetalhesClasse(classe) {
     const detalhes = document.getElementById("detalhesClasse");
 
@@ -2431,17 +3259,6 @@ function mostrarDetalhesClasse(classe) {
     const habilidadesHTML = classe.habilidades
         .map(habilidade => `<div class="habilidade-item"><h4>${habilidade}</h4></div>`)
         .join("");
-
-    const temProgressao = Array.isArray(classe.progressao) && classe.progressao.length > 0;
-
-    const progressaoHTML = temProgressao
-        ? classe.progressao.map(progresso => `
-            <tr>
-                <td>${progresso.nex}%</td>
-                <td>${progresso.habilidade}</td>
-            </tr>
-        `).join("")
-        : "";
 
     detalhes.innerHTML = `
         <div class="classe-detalhe-header">
@@ -2496,27 +3313,299 @@ function mostrarDetalhesClasse(classe) {
             </div>
         </div>
 
-        ${temProgressao ? `
-        <div class="classe-secao">
-            <h3>PROGRESSÃO NEX</h3>
+        ${renderProgressaoInterativaHTML(classe)}
+    `;
+}
 
-            <div class="tabela-wrapper">
-                <table class="tabela-nex">
-                    <thead>
-                        <tr>
-                            <th>NEX</th>
-                            <th>HABILIDADE</th>
-                        </tr>
-                    </thead>
+// Decide o que mostrar em cada linha da tabela de progressão:
+// texto fixo, poder de trilha resolvido, ou seletor de talento
+// Classifica o tipo de linha da progressão pra estilização (fixo / trilha / talento)
+function tipoLinhaProgressao(habilidade) {
+    if (habilidade === "Habilidade de Trilha") return "trilha";
+    if (habilidade.startsWith("Poder de ")) return "talento";
+    return "fixo";
+}
 
-                    <tbody>
-                        ${progressaoHTML}
-                    </tbody>
-                </table>
+function celulaProgressao(progresso) {
+    if (progresso.habilidade === "Habilidade de Trilha") {
+        const trilha = trilhaSelecionada[categoriaSelecionada];
+        const poder = poderTrilhaParaNex(categoriaSelecionada, progresso.nex);
+
+        if (!trilha) {
+            return `<em class="linha-nex-vazia">Escolha uma trilha abaixo</em>`;
+        }
+
+        if (!poder) {
+            return `<em class="linha-nex-vazia">${trilha.nome}: esta classe não recebe poder de trilha neste NEX</em>`;
+        }
+
+        return `
+            <div class="poder-resolvido">
+                <strong>${poder.titulo}</strong>
+                <span class="tag-trilha">${trilha.nome}</span>
+            </div>
+            <p class="poder-resolvido-efeito">${poder.efeito}</p>
+        `;
+    }
+
+    if (progresso.habilidade.startsWith("Poder de ")) {
+        return renderSelectTalento(categoriaSelecionada, progresso.nex);
+    }
+
+    return `<span class="linha-nex-fixa">${progresso.habilidade}</span>`;
+}
+
+// Retorna o poder da trilha escolhida correspondente a um NEX específico (10/40/65/99)
+function poderTrilhaParaNex(categoria, nex) {
+    const trilha = trilhaSelecionada[categoria];
+    if (!trilha) return null;
+    return trilha.poderes.find(p => p.nex === nex) || null;
+}
+
+// Monta o <select> de talento para um slot "Poder de X" em um NEX específico
+function renderSelectTalento(categoria, nex) {
+    const lista = talentos[categoria] || [];
+    const atual = (talentosEscolhidos[categoria] && talentosEscolhidos[categoria][nex]) || "";
+    const talentoObj = lista.find(t => t.nome === atual);
+
+    const opcoes = lista.map(t => `
+        <button type="button"
+                class="dropdown-talento-opcao ${t.nome === atual ? "ativa" : ""}"
+                onclick="escolherTalento('${categoria}', ${nex}, '${t.nome.replace(/'/g, "\\'")}')">
+            ${t.nome}${t.repetivel ? ` <span class="tag-repetivel">repetível</span>` : ""}
+        </button>
+    `).join("");
+
+    return `
+        <div class="dropdown-talento">
+            <button type="button"
+                    class="dropdown-talento-toggle"
+                    onclick="toggleDropdownTalento(event)">
+                <span>${atual || "— escolher talento —"}</span>
+                <span class="dropdown-talento-seta">▾</span>
+            </button>
+            <div class="dropdown-talento-lista">
+                <button type="button"
+                        class="dropdown-talento-opcao ${atual === "" ? "ativa" : ""}"
+                        onclick="escolherTalento('${categoria}', ${nex}, '')">
+                    — escolher talento —
+                </button>
+                ${opcoes}
             </div>
         </div>
-        ` : ""}
+        ${talentoObj ? `<p class="talento-descricao">${talentoObj.desc}</p>` : ""}
     `;
+}
+
+// Abre/fecha o dropdown customizado de talento, fechando qualquer outro que esteja aberto.
+// Usa o próprio botão clicado como referência (não um id) porque a mesma lista de
+// progressão é renderizada tanto na etapa 03 quanto na etapa 06 — um id fixo faria
+// document.getElementById sempre pegar a primeira cópia no HTML, ignorando a visível.
+// Controla a visibilidade só por classe CSS (.aberta) — usar o atributo "hidden" aqui
+// conflita com o "display: flex" do CSS e a lista nunca fecha de verdade.
+function toggleDropdownTalento(evento) {
+    evento.stopPropagation();
+
+    const dropdown = evento.currentTarget.closest(".dropdown-talento");
+    if (!dropdown) return;
+
+    const lista = dropdown.querySelector(".dropdown-talento-lista");
+    const jaAberto = lista.classList.contains("aberta");
+
+    document.querySelectorAll(".dropdown-talento-lista.aberta").forEach(el => el.classList.remove("aberta"));
+    document.querySelectorAll(".dropdown-talento.aberto").forEach(el => el.classList.remove("aberto"));
+
+    if (!jaAberto) {
+        lista.classList.add("aberta");
+        dropdown.classList.add("aberto");
+    }
+}
+
+// Fecha qualquer dropdown de talento aberto ao clicar fora dele
+document.addEventListener("click", () => {
+    document.querySelectorAll(".dropdown-talento-lista.aberta").forEach(el => el.classList.remove("aberta"));
+    document.querySelectorAll(".dropdown-talento.aberto").forEach(el => el.classList.remove("aberto"));
+});
+
+// Salva a escolha de talento para um slot de NEX específico dentro da categoria
+function escolherTalento(categoria, nex, nomeTalento) {
+    if (!talentosEscolhidos[categoria]) talentosEscolhidos[categoria] = {};
+    talentosEscolhidos[categoria][nex] = nomeTalento;
+
+    atualizarPaineisDeProgressao();
+    salvarProgresso();
+}
+
+// Define a trilha escolhida para toda a categoria (Combatente/Especialista/Ocultista)
+function selecionarTrilha(categoria, nomeTrilha) {
+    const lista = trilhas[categoria] || [];
+    trilhaSelecionada[categoria] = lista.find(t => t.nome === nomeTrilha) || null;
+
+    atualizarPaineisDeProgressao();
+    salvarProgresso();
+}
+
+// Atualiza todos os painéis que exibem a tabela de progressão (Classe e Características),
+// já que a escolha de trilha/talento é a mesma nos dois lugares
+function atualizarPaineisDeProgressao() {
+    if (!classeSelecionada) return;
+
+    if (document.getElementById("detalhesClasse")) {
+        mostrarDetalhesClasse(classeSelecionada);
+    }
+
+    if (document.getElementById("painelCaracteristicas")) {
+        atualizarCaracteristicas();
+    }
+}
+
+// ============================================================
+// RITUAIS
+// ============================================================
+
+const nomeElementoRitual = {
+    terra: "Terra",
+    agua: "Água",
+    fogo: "Fogo",
+    vento: "Vento",
+    vazio: "Vazio"
+};
+
+function atualizarPainelRituais() {
+    const botoes = document.getElementById("elementosRituais");
+
+    if (botoes) {
+        botoes.innerHTML = Object.keys(rituais).map(el => `
+            <button type="button"
+                    class="botao-elemento elemento-${el} ${elementoRitualAtivo === el ? "ativo" : ""}"
+                    onclick="selecionarElementoRitual('${el}')">
+                ${nomeElementoRitual[el]}
+            </button>
+        `).join("");
+    }
+
+    renderizarResumoRituais();
+    renderizarListaRituaisElemento();
+}
+
+function selecionarElementoRitual(elemento) {
+    elementoRitualAtivo = elemento;
+    atualizarPainelRituais();
+}
+
+function ritualConhecido(elemento, nome) {
+    return rituaisConhecidos.some(r => r.elemento === elemento && r.nome === nome);
+}
+
+function toggleRitualConhecido(elemento, nome) {
+    const idx = rituaisConhecidos.findIndex(r => r.elemento === elemento && r.nome === nome);
+
+    if (idx >= 0) {
+        rituaisConhecidos.splice(idx, 1);
+    } else {
+        const ritual = (rituais[elemento] || []).find(r => r.nome === nome);
+        if (ritual) rituaisConhecidos.push({ ...ritual, elemento });
+    }
+
+    atualizarPainelRituais();
+    salvarProgresso();
+}
+
+function renderizarListaRituaisElemento() {
+    const cont = document.getElementById("listaRituaisElemento");
+
+    if (!cont) return;
+
+    if (!elementoRitualAtivo) {
+        cont.innerHTML = `<p class="aviso-vazio">Selecione um elemento acima para ver os rituais disponíveis.</p>`;
+        return;
+    }
+
+    const lista = [...(rituais[elementoRitualAtivo] || [])].sort((a, b) => a.circulo - b.circulo);
+
+    const grupos = [1, 2, 3, 4].map(circulo => ({
+        circulo,
+        itens: lista.filter(r => r.circulo === circulo)
+    })).filter(grupo => grupo.itens.length > 0);
+
+    cont.innerHTML = grupos.map(grupo => `
+        <div class="grupo-rituais">
+            <div class="grupo-rituais-header">
+                <span class="grupo-rituais-linha"></span>
+                <h3>${grupo.circulo}º CÍRCULO</h3>
+                <span class="grupo-rituais-linha"></span>
+            </div>
+
+            <div class="grade-rituais">
+                ${grupo.itens.map(r => `
+                    <div class="card-ritual elemento-${elementoRitualAtivo} ${ritualConhecido(elementoRitualAtivo, r.nome) ? "conhecido" : ""}">
+                        <div class="card-ritual-topo">
+                            <h4>${r.nome}</h4>
+                            <label class="checkbox-ritual">
+                                <input type="checkbox"
+                                       ${ritualConhecido(elementoRitualAtivo, r.nome) ? "checked" : ""}
+                                       onchange="toggleRitualConhecido('${elementoRitualAtivo}', '${r.nome.replace(/'/g, "\\'")}')">
+                                <span class="checkbox-ritual-caixa"></span>
+                                Conhece
+                            </label>
+                        </div>
+
+                        <p class="ritual-tag">${r.detalhes}</p>
+                        <p class="ritual-descricao">${r.descricao}</p>
+
+                        ${r.consagracao ? `
+                            <div class="ritual-caixa ritual-caixa-consagracao">
+                                <span class="ritual-caixa-rotulo">Consagração</span>
+                                <p>${r.consagracao}</p>
+                            </div>
+                        ` : ""}
+
+                        ${r.colateral ? `
+                            <div class="ritual-caixa ritual-caixa-colateral">
+                                <span class="ritual-caixa-rotulo">Efeito Colateral</span>
+                                <p>${r.colateral}</p>
+                            </div>
+                        ` : ""}
+                    </div>
+                `).join("")}
+            </div>
+        </div>
+    `).join("");
+}
+
+function renderizarResumoRituais() {
+    const cont = document.getElementById("resumoRituaisConhecidos");
+
+    if (!cont) return;
+
+    if (rituaisConhecidos.length === 0) {
+        cont.innerHTML = `<p class="aviso-vazio">Nenhum ritual conhecido ainda — marque "Conhece" nos rituais abaixo.</p>`;
+        return;
+    }
+
+    cont.innerHTML = `
+        <h3>RITUAIS CONHECIDOS (${rituaisConhecidos.length})</h3>
+        <div class="chips-rituais">
+            ${rituaisConhecidos.map(r => `<span class="chip-ritual">${r.nome} <small>(${r.circulo}º círculo)</small></span>`).join("")}
+        </div>
+    `;
+}
+
+// Usado na Ficha Final e no Modo de Jogo
+function gerarRituaisConhecidosHTML() {
+    if (rituaisConhecidos.length === 0) {
+        return "<p>Nenhum ritual conhecido.</p>";
+    }
+
+    return rituaisConhecidos.map(r => `
+        <div class="ficha-ritual-item">
+            <h4>${r.nome} <span class="circulo-ritual">Círculo ${r.circulo}</span></h4>
+            <p class="ritual-tag">${r.detalhes}</p>
+            <p>${r.descricao}</p>
+            ${r.consagracao ? `<p class="ritual-consagracao"><strong>Consagração:</strong> ${r.consagracao}</p>` : ""}
+            ${r.colateral ? `<p class="ritual-colateral"><strong>Efeito Colateral:</strong> ${r.colateral}</p>` : ""}
+        </div>
+    `).join("");
 }
 
 // ============================================================
@@ -2700,6 +3789,10 @@ function atualizarCaracteristicas() {
                 </div>
 
             </div>
+        </div>
+
+        <div class="detalhe-caracteristicas">
+            ${renderProgressaoInterativaHTML(classeSelecionada)}
         </div>
     `;
 }
@@ -3018,12 +4111,27 @@ function gerarTabelaHabilidades() {
         return "";
     }
 
-    return classeSelecionada.progressao.map(passo => `
-        <tr>
-            <td>${passo.habilidade}</td>
-            <td>${passo.nex}%</td>
-        </tr>
-    `).join("");
+    return classeSelecionada.progressao.map(passo => {
+        let texto = passo.habilidade;
+
+        if (passo.habilidade === "Habilidade de Trilha") {
+            const trilha = trilhaSelecionada[categoriaSelecionada];
+            const poder = poderTrilhaParaNex(categoriaSelecionada, passo.nex);
+            texto = poder
+                ? `${poder.titulo} (Trilha: ${trilha.nome})`
+                : "Habilidade de Trilha (não escolhida)";
+        } else if (passo.habilidade.startsWith("Poder de ")) {
+            const nomeTalento = talentosEscolhidos[categoriaSelecionada] && talentosEscolhidos[categoriaSelecionada][passo.nex];
+            texto = nomeTalento ? `Talento: ${nomeTalento}` : `${passo.habilidade} (não escolhido)`;
+        }
+
+        return `
+            <tr>
+                <td>${texto}</td>
+                <td>${passo.nex}%</td>
+            </tr>
+        `;
+    }).join("");
 }
 
 // Monta o bloco estruturado da arma principal (a primeira escolhida) e lista as demais
@@ -3198,6 +4306,9 @@ function preencherFicha(personagem) {
 
     const habilidadesTabela = document.getElementById("fichaHabilidadesTabela");
     if (habilidadesTabela) habilidadesTabela.innerHTML = gerarTabelaHabilidades();
+
+    const rituaisFichaEl = document.getElementById("fichaRituaisConhecidos");
+    if (rituaisFichaEl) rituaisFichaEl.innerHTML = gerarRituaisConhecidosHTML();
 
     const inventarioArmas = document.getElementById("fichaInventarioArmas");
     if (inventarioArmas) {
@@ -3798,7 +4909,9 @@ function renderizarEditorArmasJogo() {
     const categorias = ["Corte", "Haste", "Distância", "Impacto"];
 
     lista.innerHTML = categorias.map(categoria => {
-        const armas = listaDeArmas.filter(arma => arma.categoria === categoria);
+        const armas = listaDeArmas
+            .filter(arma => arma.categoria === categoria)
+            .sort((a, b) => a.nivel - b.nivel);
 
         return `
             <div class="grupo-editor-armas-jogo">
@@ -3925,6 +5038,9 @@ function preencherModoJogo(personagem) {
             }).join("")
             : `<p class="aviso-vazio">Nenhuma perícia treinada.</p>`;
     }
+
+    const rituaisJogoEl = document.getElementById("jogoRituais");
+    if (rituaisJogoEl) rituaisJogoEl.innerHTML = gerarRituaisConhecidosHTML();
 }
 
 // ============================================================
@@ -3951,7 +5067,7 @@ function criarPersonagem() {
 }
 
 function mudarEtapa(novaEtapa) {
-    if (novaEtapa < 1 || novaEtapa > 8) return;
+    if (novaEtapa < 1 || novaEtapa > 9) return;
 
     document.querySelectorAll(".etapa").forEach(etapa => {
         etapa.classList.remove("ativa");
@@ -3969,13 +5085,18 @@ function mudarEtapa(novaEtapa) {
     etapaAtual = novaEtapa;
     atualizarProgresso();
 
-    if (novaEtapa === 4) {
+    if (novaEtapa === 3) {
+        if (categoriaSelecionada) mostrarCategoria(categoriaSelecionada);
+        if (classeSelecionada) mostrarDetalhesClasse(classeSelecionada);
+    } else if (novaEtapa === 4) {
         mostrarOrigens();
     } else if (novaEtapa === 5) {
         mostrarPericias();
     } else if (novaEtapa === 6) {
         atualizarCaracteristicas();
     } else if (novaEtapa === 7) {
+        atualizarPainelRituais();
+    } else if (novaEtapa === 8) {
         mostrarArmas();
     }
 

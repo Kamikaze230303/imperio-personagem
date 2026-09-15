@@ -1070,9 +1070,9 @@ textarea {
 /* CARACTERÍSTICAS */
 
 .painel-caracteristicas {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
 }
 
 .titulo-caracteristicas h2 {
@@ -1085,14 +1085,13 @@ textarea {
 .titulo-caracteristicas .aviso-vazio {
     color: #aaa;
     font-size: 14px;
-    margin-bottom: 20px;
+    margin-bottom: 0;
 }
 
 .resumo-caracteristicas {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 16px;
-    margin-bottom: 30px;
 }
 
 .caracteristica {
@@ -1128,6 +1127,45 @@ textarea {
     color: #888;
     font-size: 11px;
     line-height: 1.4;
+}
+
+.detalhe-caracteristicas {
+    padding: 26px 30px;
+    background: rgba(10,10,10,.92);
+    border: 1px solid #444;
+}
+
+.detalhe-caracteristicas h3 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 17px;
+    letter-spacing: .5px;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.detalhe-caracteristicas h3:not(:first-child) {
+    margin-top: 26px;
+}
+
+.detalhe-caracteristicas h4 {
+    color: #e5ddce;
+    font-family: "Cinzel", serif;
+    font-size: 15px;
+    margin: 0 0 6px;
+}
+
+.detalhe-caracteristicas p {
+    color: #ddd3c0;
+    line-height: 1.5;
+    margin: 0 0 10px;
+}
+
+.detalhe-caracteristicas .classe-secao:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
 }
 
 /* PARANORMAL */
@@ -2173,4 +2211,623 @@ textarea {
             "terceiro"
             "quarto";
     }
+}
+
+/* ============================================================
+   TRILHAS, TALENTOS E RITUAIS (IMPÉRIO)
+   ============================================================ */
+
+.classe-secao {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #3a3a3a;
+}
+
+.classe-secao h3 {
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    margin: 0 0 12px;
+}
+
+.habilidades-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.habilidade-item {
+    padding: 12px 16px;
+    background: rgba(12,12,12,.92);
+    border: 1px solid #444;
+}
+
+.habilidade-item h4 {
+    margin: 0;
+    color: #e5ddce;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.lista-progressao-nex {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #3a3a3a;
+}
+
+.linha-nex {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    border-left: 3px solid transparent;
+    background: rgba(20,18,16,.6);
+    transition: background .15s;
+}
+
+.linha-nex:nth-child(even) {
+    background: rgba(12,11,10,.75);
+}
+
+.linha-nex:last-child {
+    border-bottom: none;
+}
+
+.linha-nex:hover {
+    background: rgba(60,20,20,.25);
+}
+
+.linha-nex-badge {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 8px;
+    font-family: "Cinzel", serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--dourado);
+    background: rgba(0,0,0,.35);
+    border-right: 1px solid rgba(255,255,255,.06);
+}
+
+.linha-nex-conteudo {
+    padding: 14px 20px;
+    color: #ddd3c0;
+    font-size: 14.5px;
+    line-height: 1.5;
+}
+
+.linha-nex-fixa {
+    color: #b9b0a0;
+}
+
+.linha-nex-vazia {
+    color: #8a8378;
+    font-style: italic;
+}
+
+/* Tipos de linha: fixa (mecânica automática), trilha, talento */
+
+.linha-nex.tipo-trilha {
+    border-left-color: var(--vermelho-claro);
+}
+
+.linha-nex.tipo-talento {
+    border-left-color: var(--dourado);
+}
+
+.linha-nex.tipo-fixo {
+    border-left-color: #444;
+}
+
+.poder-resolvido {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.poder-resolvido strong {
+    color: #f0e6d2;
+    font-size: 15px;
+}
+
+.poder-resolvido-efeito {
+    margin: 4px 0 0;
+    color: #b9b0a0;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.tag-trilha {
+    display: inline-block;
+    padding: 2px 9px;
+    background: rgba(117,0,0,.4);
+    border: 1px solid var(--vermelho-claro);
+    color: #f0e6d2;
+    font-size: 11.5px;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+}
+
+.talento-descricao {
+    margin: 8px 0 0;
+    color: #b9b0a0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* ---- Trilhas ---- */
+
+.lista-trilhas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.card-trilha {
+    padding: 18px;
+    background: rgba(12,12,12,.92);
+    color: #e5ddce;
+    border: 1px solid #444;
+    text-align: left;
+    cursor: pointer;
+    transition: transform .2s, border-color .2s, background .2s;
+}
+
+.card-trilha:hover {
+    transform: translateY(-2px);
+}
+
+.card-trilha:hover,
+.card-trilha.selecionada {
+    border-color: var(--vermelho-claro);
+    background: rgba(100,0,0,.3);
+}
+
+.card-trilha.selecionada {
+    box-shadow: 0 0 0 1px var(--vermelho-claro), 0 0 22px rgba(196,18,18,.12);
+}
+
+.card-trilha h4 {
+    margin: 0 0 6px;
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+}
+
+.card-trilha p {
+    margin: 0;
+    color: #aaa;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* ---- Talentos (dropdown customizado dentro da lista de progressão) ---- */
+
+.dropdown-talento {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+}
+
+.dropdown-talento-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(0,0,0,.55);
+    color: #e5ddce;
+    border: 1px solid #57462b;
+    font-family: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.dropdown-talento-toggle:hover {
+    border-color: var(--dourado);
+}
+
+.dropdown-talento.aberto .dropdown-talento-toggle {
+    border-color: var(--vermelho-claro);
+    box-shadow: 0 0 0 2px rgba(196,18,18,.2);
+}
+
+.dropdown-talento-seta {
+    color: var(--dourado);
+    font-size: 11px;
+    transition: transform .2s;
+}
+
+.dropdown-talento.aberto .dropdown-talento-seta {
+    transform: rotate(180deg);
+}
+
+.dropdown-talento-lista {
+    display: none;
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 280px;
+    overflow-y: auto;
+    flex-direction: column;
+    background: #161412;
+    border: 1px solid var(--vermelho-claro);
+    box-shadow: 0 10px 30px rgba(0,0,0,.6);
+}
+
+.dropdown-talento-lista.aberta {
+    display: flex;
+}
+
+.dropdown-talento-opcao {
+    padding: 10px 14px;
+    background: transparent;
+    color: #e5ddce;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    font-family: inherit;
+    font-size: 13.5px;
+    text-align: left;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+
+.dropdown-talento-opcao:last-child {
+    border-bottom: none;
+}
+
+.dropdown-talento-opcao:hover {
+    background: rgba(196,18,18,.25);
+    color: var(--dourado);
+}
+
+.dropdown-talento-opcao.ativa {
+    background: rgba(117,0,0,.4);
+    color: var(--dourado);
+    font-weight: 600;
+}
+
+.tag-repetivel {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    font-size: 10px;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    color: #f0e6d2;
+    background: rgba(117,0,0,.5);
+    border: 1px solid var(--vermelho-claro);
+    vertical-align: middle;
+}
+
+/* ---- Etapa Rituais ---- */
+
+.elementos-rituais {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.botao-elemento {
+    padding: 12px 22px;
+    background: rgba(12,12,12,.92);
+    color: #e5ddce;
+    border: 1px solid #444;
+    border-bottom: 3px solid transparent;
+    font-family: "Cinzel", serif;
+    font-size: 15px;
+    letter-spacing: .5px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s, color .2s;
+}
+
+.botao-elemento.elemento-terra { --cor-ritual: #8a6d3f; }
+.botao-elemento.elemento-agua  { --cor-ritual: #3a8fbd; }
+.botao-elemento.elemento-fogo  { --cor-ritual: #d9711f; }
+.botao-elemento.elemento-vento { --cor-ritual: #57a68f; }
+.botao-elemento.elemento-vazio { --cor-ritual: #8a5bc9; }
+
+.botao-elemento:hover,
+.botao-elemento.ativo {
+    border-color: var(--cor-ritual, var(--vermelho-claro));
+    border-bottom-color: var(--cor-ritual, var(--vermelho-claro));
+    background: rgba(100,0,0,.2);
+    color: var(--dourado);
+}
+
+.resumo-rituais-conhecidos {
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    background: rgba(10,10,10,.85);
+    border: 1px dashed var(--dourado);
+}
+
+.resumo-rituais-conhecidos h3 {
+    margin: 0 0 10px;
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 16px;
+}
+
+.chips-rituais {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip-ritual {
+    padding: 6px 12px;
+    background: rgba(117,0,0,.35);
+    border: 1px solid var(--vermelho-claro);
+    color: #e5ddce;
+    font-size: 13px;
+}
+
+.chip-ritual small {
+    color: #aaa;
+}
+
+.lista-rituais {
+    display: flex;
+    flex-direction: column;
+    gap: 34px;
+}
+
+.grupo-rituais-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.grupo-rituais-header h3 {
+    margin: 0;
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 17px;
+    letter-spacing: 3px;
+    white-space: nowrap;
+}
+
+.grupo-rituais-linha {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--vermelho-claro), transparent);
+}
+
+.grade-rituais {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 18px;
+}
+
+.card-ritual {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 22px;
+    background: linear-gradient(160deg, rgba(20,18,16,.95), rgba(10,9,8,.95));
+    border: 1px solid #444;
+    border-top: 3px solid var(--cor-ritual, var(--vermelho-claro));
+    box-shadow: 0 4px 14px rgba(0,0,0,.35);
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+
+.card-ritual:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,.5);
+}
+
+.card-ritual.elemento-terra   { --cor-ritual: #8a6d3f; }
+.card-ritual.elemento-agua    { --cor-ritual: #3a8fbd; }
+.card-ritual.elemento-fogo    { --cor-ritual: #d9711f; }
+.card-ritual.elemento-vento   { --cor-ritual: #57a68f; }
+.card-ritual.elemento-vazio   { --cor-ritual: #8a5bc9; }
+
+.card-ritual.conhecido {
+    border-color: var(--cor-ritual, var(--vermelho-claro));
+    background: linear-gradient(160deg, rgba(60,20,20,.55), rgba(15,10,10,.95));
+}
+
+.card-ritual-topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.card-ritual h4 {
+    margin: 0;
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 16.5px;
+    letter-spacing: .3px;
+}
+
+.checkbox-ritual {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: #aaa;
+    white-space: nowrap;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.checkbox-ritual input {
+    accent-color: var(--vermelho-claro);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+}
+
+.ritual-tag {
+    font-size: 12px;
+    color: var(--cor-ritual, #9a9384);
+    margin: 0 0 10px;
+    font-style: italic;
+    letter-spacing: .2px;
+}
+
+.ritual-descricao {
+    margin: 0 0 14px;
+    line-height: 1.55;
+    font-size: 14.5px;
+    color: #ddd3c0;
+    flex-grow: 1;
+}
+
+.ritual-caixa {
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: rgba(0,0,0,.35);
+    border-left: 3px solid var(--cor-ritual, var(--dourado));
+}
+
+.ritual-caixa + .ritual-caixa {
+    margin-top: 10px;
+}
+
+.ritual-caixa-rotulo {
+    display: block;
+    margin-bottom: 4px;
+    font-family: "Cinzel", serif;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.ritual-caixa-consagracao .ritual-caixa-rotulo {
+    color: var(--dourado);
+}
+
+.ritual-caixa-colateral .ritual-caixa-rotulo {
+    color: var(--vermelho-claro);
+}
+
+.ritual-caixa p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: #ddd3c0;
+}
+
+/* ---- Rituais na Ficha Final / Modo de Jogo ---- */
+
+.ficha-rituais-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+}
+
+.ficha-ritual-item {
+    padding: 14px 16px;
+    background: rgba(0,0,0,.35);
+    border: 1px solid #444;
+}
+
+.ficha-ritual-item h4 {
+    margin: 0 0 6px;
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 15px;
+}
+
+.ficha-ritual-item p {
+    margin: 0 0 6px;
+    font-size: 13.5px;
+    line-height: 1.4;
+    color: #ddd3c0;
+}
+
+.circulo-ritual {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: #e5ddce;
+    background: rgba(117,0,0,.5);
+    border: 1px solid var(--vermelho-claro);
+    vertical-align: middle;
+}
+
+
+/* ---- Painel de poderes da trilha escolhida (largura total, abaixo da grade de cards) ---- */
+
+.painel-poderes-trilha {
+    margin-top: 18px;
+    padding: 20px 24px;
+    background: rgba(0,0,0,.4);
+    border: 1px solid var(--vermelho-claro);
+    border-left: 3px solid var(--vermelho-claro);
+}
+
+.painel-poderes-trilha-titulo {
+    margin: 0 0 14px;
+    color: var(--dourado);
+    font-family: "Cinzel", serif;
+    font-size: 15px;
+    letter-spacing: .5px;
+}
+
+.grade-poderes-trilha {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.poder-trilha-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    background: rgba(12,12,12,.85);
+    border: 1px solid #444;
+}
+
+.poder-trilha-nex {
+    align-self: flex-start;
+    padding: 2px 9px;
+    font-family: "Cinzel", serif;
+    font-size: 11px;
+    letter-spacing: .5px;
+    color: #f0e6d2;
+    background: rgba(117,0,0,.5);
+    border: 1px solid var(--vermelho-claro);
+}
+
+.poder-trilha-item strong {
+    color: #f0e6d2;
+    font-size: 14.5px;
+}
+
+.poder-trilha-item p {
+    margin: 0;
+    color: #b9b0a0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.habilidade-item.habilidade-base {
+    border-color: var(--vermelho-claro);
+    background: rgba(100,0,0,.2);
+}
+
+.habilidade-item.habilidade-base p {
+    margin: 6px 0 0;
+    font-size: 13.5px;
+    color: #ddd3c0;
+    font-weight: 400;
 }
