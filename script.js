@@ -3316,7 +3316,7 @@ function renderDetalhesOrigem() {
 }
 
 // Penalidade permanente de Sanidade máxima por causa das mutações da Cobaia:
-// 1 mutação escolhida = perde 2/3 da Sanidade base (arredondando para cima);
+// 1 mutação escolhida = perde 1/3 da Sanidade base (arredondando para cima);
 // 2 mutações escolhidas = perde metade da Sanidade base (arredondando para cima).
 function penalidadeSanidadeCobaia() {
     if (!origemSelecionada || origemSelecionada.nome !== "Cobaia" || !classeSelecionada) return 0;
@@ -3324,7 +3324,7 @@ function penalidadeSanidadeCobaia() {
     const qtd = mutacoesCobaiaSelecionadas.length;
     const sanBase = classeSelecionada.san;
 
-    if (qtd === 1) return Math.ceil(sanBase * (2 / 3));
+    if (qtd === 1) return Math.ceil(sanBase / 3);
     if (qtd >= 2) return Math.ceil(sanBase / 2);
     return 0;
 }
@@ -3361,7 +3361,7 @@ function renderSeletorMutacaoCobaia() {
 
     const penalidade = penalidadeSanidadeCobaia();
     const textoPenalidade = qtd === 1
-        ? `1 mutação escolhida — perde ${penalidade} de Sanidade máxima permanentemente (2/3 da Sanidade base, arredondado para cima).`
+        ? `1 mutação escolhida — perde ${penalidade} de Sanidade máxima permanentemente (1/3 da Sanidade base, arredondado para cima).`
         : qtd >= 2
             ? `2 mutações escolhidas — perde ${penalidade} de Sanidade máxima permanentemente (metade da Sanidade base, arredondado para cima).`
             : `Nenhuma mutação escolhida ainda.`;
