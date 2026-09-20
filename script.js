@@ -11,6 +11,7 @@ let pontosDisponiveis = 3;
 let fotoPersonagem = "";
 
 let origemSelecionada = null;
+let mutacoesCobaiaSelecionadas = []; // até 2 nomes de mutação, só usado quando origemSelecionada.nome === "Cobaia"
 let categoriaSelecionada = "";
 let classeSelecionada = null;
 
@@ -113,7 +114,8 @@ let statsManuais = {
     defesa: null,
     esquiva: null,
     bloqueio: null,
-    contraAtaque: null
+    contraAtaque: null,
+    dt: null
 };
 
 function statManualAlterado(campo, valor) {
@@ -182,6 +184,7 @@ function salvarProgresso() {
             categoriaSelecionada,
             classeNome: classeSelecionada ? classeSelecionada.nome : null,
             origemNome: origemSelecionada ? origemSelecionada.nome : null,
+            mutacoesCobaiaNomes: [...mutacoesCobaiaSelecionadas],
             periciasSelecionadas: [...periciasSelecionadas],
             armasNomes: armasSelecionadas.map(arma => arma.nome),
             protecaoNome: protecaoSelecionada ? protecaoSelecionada.nome : null,
@@ -200,6 +203,7 @@ function salvarProgresso() {
                 ocultista: trilhaSelecionada.ocultista ? trilhaSelecionada.ocultista.nome : null
             },
             talentosEscolhidos: JSON.parse(JSON.stringify(talentosEscolhidos)),
+            escolhasNexRitual: JSON.parse(JSON.stringify(escolhasNexRitual)),
             rituaisConhecidosRef: rituaisConhecidos.map(r => ({ elemento: r.elemento, nome: r.nome })),
             respostaParanormal: document.getElementById("respostaEle")?.dataset.resposta || null,
             campos: {
@@ -267,6 +271,9 @@ function restaurarProgresso() {
     }
 
     origemSelecionada = origens.find(o => o.nome === salvo.origemNome) || null;
+    mutacoesCobaiaSelecionadas = (origemSelecionada && origemSelecionada.nome === "Cobaia" && Array.isArray(salvo.mutacoesCobaiaNomes))
+        ? salvo.mutacoesCobaiaNomes.filter(nome => mutacoesCobaia.some(m => m.nome === nome)).slice(0, LIMITE_MUTACOES_COBAIA)
+        : [];
 
     ["combatente", "especialista", "ocultista"].forEach(cat => {
         const nomeTrilhaSalva = salvo.trilhaSelecionadaNomes && salvo.trilhaSelecionadaNomes[cat];
@@ -278,6 +285,10 @@ function restaurarProgresso() {
     talentosEscolhidos = (salvo.talentosEscolhidos && typeof salvo.talentosEscolhidos === "object")
         ? salvo.talentosEscolhidos
         : { combatente: {}, especialista: {}, ocultista: {} };
+
+    escolhasNexRitual = (salvo.escolhasNexRitual && typeof salvo.escolhasNexRitual === "object")
+        ? salvo.escolhasNexRitual
+        : { combatente: {}, especialista: {} };
 
     rituaisConhecidos = Array.isArray(salvo.rituaisConhecidosRef)
         ? salvo.rituaisConhecidosRef
@@ -414,6 +425,90 @@ function incrementosNex() {
     return classeSelecionada.progressao.filter(p => p.nex <= nexPersonagem).length;
 }
 
+// ============================================================
+// RITUAIS x PROGRESSÃO DE NEX
+// ============================================================
+// Ocultista: começa com 3 rituais de 1º círculo à escolha e aprende
+// mais um ritual automaticamente a cada avanço de NEX, respeitando
+// o círculo máximo já liberado. Esses ganhos não custam Sanidade.
+// Combatente/Especialista: em cada Poder de Classe (NEX 15/30/45/60/75/90),
+// escolhem entre +4 de Sanidade OU liberar 1 vaga de ritual (o círculo
+// máximo dessa vaga acompanha o NEX atual, igual ao Ocultista). A vaga
+// só é preenchida de fato na Etapa de Rituais, escolhendo qualquer
+// ritual dentro do círculo permitido.
+
+let escolhasNexRitual = { combatente: {}, especialista: {} };
+
+// Círculo máximo de ritual que pode ser conjurado em determinado NEX
+function circuloMaximoPorNex(nex) {
+    if (nex >= 85) return 4;
+    if (nex >= 55) return 3;
+    if (nex >= 25) return 2;
+    return 1;
+}
+
+// Quantos Poderes de Classe (já alcançados no NEX atual) foram trocados por uma vaga de ritual
+function contarEscolhasRitualNex(categoria) {
+    if (!escolhasNexRitual[categoria] || !classeSelecionada) return 0;
+
+    return classeSelecionada.progressao.filter(p =>
+        p.nex <= nexPersonagem && escolhasNexRitual[categoria][p.nex]
+    ).length;
+}
+
+// Vagas automáticas de ritual: a cada 15% de NEX (15, 30, 45...) alcançado,
+// Combatente/Especialista ganham 1 ritual de graça, sem precisar escolher — não consome a escolha de Sanidade/Ritual.
+function vagasAutomaticasRitual(categoria) {
+    if (categoria === "ocultista" || !classeSelecionada) return 0;
+    let vagas = 0;
+    for (let nex = 15; nex <= nexPersonagem; nex += 15) vagas++;
+    return vagas;
+}
+
+// Limite de rituais conhecidos, de acordo com a categoria da classe
+function limiteRituais() {
+    if (!categoriaSelecionada || !classeSelecionada) return 0;
+
+    if (categoriaSelecionada === "ocultista") {
+        return 3 + incrementosNex();
+    }
+
+    return contarEscolhasRitualNex(categoriaSelecionada) + vagasAutomaticasRitual(categoriaSelecionada);
+}
+
+// Círculo máximo que o personagem pode escolher para um NOVO ritual agora
+function circuloMaximoRitualAtual() {
+    // Ocultista e a vaga de ritual (trocada por Sanidade num Poder de Classe) liberam o mesmo teto de círculo pelo NEX atual
+    return circuloMaximoPorNex(nexPersonagem);
+}
+
+// DT de resistência para quem sofre o efeito de um ritual: 10 + Presença + 1 por avanço de NEX
+function dtResistenciaRitual() {
+    return 10 + (Number(atributos.presenca) || 0) + incrementosNex();
+}
+
+// Soma de Sanidade ganha pela progressão de NEX. Em CADA nível de NEX (5, 10, 15...),
+// Combatente/Especialista escolhem entre +Sanidade ou 1 vaga de ritual; se escolheram
+// ritual naquele nível, não recebem a Sanidade dele.
+function sanidadeGanhaPorNex() {
+    if (!classeSelecionada || !Array.isArray(classeSelecionada.progressao)) return 0;
+
+    if (categoriaSelecionada === "ocultista") {
+        return incrementosNex() * classeSelecionada.sanNex;
+    }
+
+    const escolhas = escolhasNexRitual[categoriaSelecionada] || {};
+    let total = 0;
+
+    classeSelecionada.progressao
+        .filter(p => p.nex <= nexPersonagem)
+        .forEach(p => {
+            total += escolhas[p.nex] ? 0 : classeSelecionada.sanNex;
+        });
+
+    return total;
+}
+
 const listaDeArmas = [
     { nome: "Nodachi", categoria: "Haste", nivel: 3, proficiencia: "Marcial", dano: "1d12", pericia: "Luta", alcance: "Longo", maos: "Duas mãos", peso: "Pesado", tamanho: "Grande", espaco: 4, especial: "Exige as duas mãos; -5 em ambientes fechados." },
     { nome: "Wakizashi Amaldiçoado", categoria: "Corte", nivel: 4, proficiencia: "Marcial", dano: "1d6", pericia: "Luta", alcance: "Curto", maos: "Uma mão", peso: "Leve", tamanho: "Pequena", espaco: 1, especial: "Uma vez por cena, sussurra o nome de quem cairá em seguida; se a previsão se cumprir na mesma cena, você recebe +5 no próximo teste de Luta." },
@@ -473,6 +568,45 @@ const listaDeEquipamentosEspeciais = [
         categoria: 1,
         especial: "Fornece 20 espaços separados do inventário do personagem."
     }
+];
+
+// ============================================================
+// REGRAS DE COMBATE E CONDIÇÕES DE STATUS (referência para o Modo de Jogo)
+// ============================================================
+// Conteúdo de referência original do IMPÉRIO — mecânicas numéricas próprias,
+// não copiadas de nenhum outro sistema.
+const regrasCombate = [
+    { titulo: "Teste de Ataque", texto: "Role 1d20 + a perícia usada (Luta para corpo a corpo, Pontaria para à distância). Se o resultado igualar ou superar a Defesa do alvo, o ataque acerta." },
+    { titulo: "Acerto Crítico", texto: "Um resultado natural 20 no teste de ataque acerta automaticamente e dobra o dano do golpe." },
+    { titulo: "Margem de Dano", texto: "Para cada 5 pontos que o resultado do ataque ultrapassar a Defesa do alvo, some +1d6 de dano extra." },
+    { titulo: "Iniciativa", texto: "No início do combate, cada participante rola 1d20 + Agilidade. Os turnos seguem do maior para o menor resultado." },
+    { titulo: "Ação Padrão", texto: "Atacar, usar uma perícia com risco, ou conjurar um ritual." },
+    { titulo: "Ação de Movimento", texto: "Deslocar-se até o limite de deslocamento, levantar-se do chão ou sacar/guardar um item." },
+    { titulo: "Ação Completa", texto: "Substitui a ação padrão e a de movimento no turno; usada para ações mais demoradas." },
+    { titulo: "Reação", texto: "Usada fora do seu turno, em resposta a um gatilho específico. Apenas uma por rodada." },
+    { titulo: "Ação Livre", texto: "Falar poucas palavras ou soltar algo que já esteja segurando. Não consome outras ações." },
+    { titulo: "Deslocamento", texto: "9 metros por turno. Reduzido à metade enquanto uma Proteção Pesada estiver equipada." },
+    { titulo: "Descanso Curto", texto: "Até 1 hora de descanso recupera Pontos de Esforço iguais à Presença do personagem." },
+    { titulo: "Descanso Longo", texto: "Uma noite inteira de sono recupera todos os PV e PE, além de metade da Sanidade perdida (arredondando para baixo)." }
+];
+
+const condicoesStatus = [
+    { nome: "Agarrado", efeito: "Não pode se mover nem usar ações que exijam deslocamento. Sofre -5 em testes de Luta e Pontaria até se soltar." },
+    { nome: "Alquebrado", efeito: "Até o fim da cena, os ataques do personagem causam -1d6 de dano." },
+    { nome: "Apavorado", efeito: "Não pode se aproximar voluntariamente da fonte do medo e sofre -5 em qualquer teste enquanto ela estiver visível." },
+    { nome: "Atordoado", efeito: "Perde a próxima ação padrão do turno; só pode agir com ação de movimento ou reação." },
+    { nome: "Caído", efeito: "Sofre -5 em ataques corpo a corpo e concede +5 a ataques corpo a corpo feitos contra si. Gasta metade do deslocamento para se levantar." },
+    { nome: "Cego", efeito: "Falha automaticamente em testes que dependam de visão e sofre -5 em testes de ataque. Quem o ataca recebe +5 para acertá-lo." },
+    { nome: "Confuso", efeito: "No início do turno, role 1d4: 1-2 age normalmente, 3 perde a ação, 4 ataca o alvo mais próximo, aliado ou não." },
+    { nome: "Desprevenido", efeito: "Não pode usar reações e sofre -5 na Defesa contra o próximo ataque que receber." },
+    { nome: "Enjoado", efeito: "Só pode realizar uma ação por turno — padrão ou de movimento, nunca as duas." },
+    { nome: "Exausto", efeito: "Sofre -5 em testes de Força, Agilidade e Vigor até conseguir descansar." },
+    { nome: "Fascinado", efeito: "Não pode agir contra a fonte da fascinação e sofre -5 em testes de Percepção para notar qualquer outra coisa." },
+    { nome: "Imóvel", efeito: "Não pode se deslocar, mas age normalmente com ações que não dependam de movimento." },
+    { nome: "Inconsciente", efeito: "Não pode agir e cai no chão. Qualquer ataque corpo a corpo contra o personagem é automaticamente um acerto crítico." },
+    { nome: "Sangrando", efeito: "Perde 1 PV no início de cada turno até receber cuidados ou um teste de Medicina bem-sucedido estancar o ferimento." },
+    { nome: "Surdo", efeito: "Falha automaticamente em testes que dependam de audição e não pode reagir a efeitos sonoros." },
+    { nome: "Vulnerável", efeito: "O próximo ataque recebido causa dano dobrado." }
 ];
 
 const listaDeConsumiveis = [
@@ -981,15 +1115,44 @@ function mostrarArmas() {
     }
 }
 
+// Quantidade-base de perícias à escolha por categoria (antes de somar Intelecto)
+function baseLimitePericiasCategoria(categoria) {
+    if (categoria === "combatente") return 1;
+    if (categoria === "especialista") return 7;
+    if (categoria === "ocultista") return 3;
+    return 0;
+}
+
+// Cada escolha do talento "Domínio Expandido" concede +2 perícias treinadas
+function bonusPericiasDominioExpandido() {
+    if (!categoriaSelecionada || !talentosEscolhidos[categoriaSelecionada]) return 0;
+
+    return Object.values(talentosEscolhidos[categoriaSelecionada])
+        .filter(nomeTalento => nomeTalento === "Domínio Expandido")
+        .length * 2;
+}
+
+// Limite total de perícias que podem ser escolhidas livremente na Etapa de Perícias
+function limitePericias() {
+    if (!categoriaSelecionada) return 0;
+    return baseLimitePericiasCategoria(categoriaSelecionada) + atributos.intelecto + bonusPericiasDominioExpandido();
+}
+
 function togglePericia(nome) {
     const pericia = listaDePericias.find(p => p.nome === nome);
     if (!pericia) return;
+
+    // Perícias garantidas pela origem já vêm treinadas de graça e não podem ser alteradas aqui
+    if (origemSelecionada && origemSelecionada.pericias.includes(nome)) return;
 
     const jaSelecionada = periciasSelecionadas.includes(nome);
 
     if (jaSelecionada) {
         periciasSelecionadas = periciasSelecionadas.filter(n => n !== nome);
     } else {
+        if (periciasSelecionadas.length >= limitePericias()) {
+            return;
+        }
         periciasSelecionadas.push(nome);
     }
 
@@ -1036,12 +1199,19 @@ function mostrarPericias() {
         return;
     }
 
+    // Perícias já garantidas de graça pela origem não devem ocupar uma vaga de escolha livre
+    if (origemSelecionada) {
+        periciasSelecionadas = periciasSelecionadas.filter(nome => !origemSelecionada.pericias.includes(nome));
+    }
+
+    const limite = limitePericias();
+
     if (resumo) {
         resumo.innerHTML = `
             <div class="pontos-box">
                 <p>PERÍCIAS TREINADAS</p>
-                <strong>${periciasSelecionadas.length}</strong>
-                <small>Sem limite — treine quantas perícias quiser</small>
+                <strong>${periciasSelecionadas.length} / ${limite}</strong>
+                <small>${periciasSelecionadas.length >= limite ? "Limite atingido — desmarque uma perícia para trocar" : `Escolha até ${limite} perícias (${baseLimitePericiasCategoria(categoriaSelecionada)} + Intelecto${bonusPericiasDominioExpandido() > 0 ? " + Domínio Expandido" : ""})`}</small>
             </div>
         `;
     }
@@ -1056,20 +1226,26 @@ function mostrarPericias() {
 
     const ordemAtributos = ["agilidade", "forca", "intelecto", "presenca", "vigor"];
 
+    const periciasDaOrigem = origemSelecionada ? origemSelecionada.pericias : [];
+
     lista.innerHTML = ordemAtributos.map(atributo => {
         const valorAtributo = atributos[atributo];
 
         const itensHTML = listaDePericias
             .filter(pericia => pericia.atributo === atributo)
             .map(pericia => {
-                const selecionada = periciasSelecionadas.includes(pericia.nome);
+                const deOrigem = periciasDaOrigem.includes(pericia.nome);
+                const selecionada = deOrigem || periciasSelecionadas.includes(pericia.nome);
                 const bonus = selecionada ? 5 + penalidadeArmaduraPesada(pericia.nome) : 0;
+                const bloqueadaPorLimite = !selecionada && periciasSelecionadas.length >= limite;
+                const desabilitado = deOrigem || bloqueadaPorLimite;
 
                 return `
-                    <label class="pericia-item ${selecionada ? "selecionada" : ""}">
+                    <label class="pericia-item ${selecionada ? "selecionada" : ""} ${bloqueadaPorLimite ? "bloqueada-limite" : ""} ${deOrigem ? "pericia-de-origem" : ""}">
 
                         <input type="checkbox"
                                ${selecionada ? "checked" : ""}
+                               ${desabilitado ? "disabled" : ""}
                                onchange="togglePericia('${pericia.nome}')">
 
                         <span class="pericia-check"></span>
@@ -1077,6 +1253,7 @@ function mostrarPericias() {
                         <span class="pericia-info">
                             <span class="pericia-nome">
                                 ${pericia.nome}${pericia.somenteTreinada ? "*" : ""}
+                                ${deOrigem ? `<span class="tag-pericia-origem">Origem</span>` : ""}
                             </span>
                         </span>
 
@@ -1179,15 +1356,6 @@ const origens = [
         habilidade: {
             nome: "Memória Treinada",
             descricao: "Sua mente foi treinada para reter detalhes que outros deixariam escapar. Uma vez por cena, você pode refazer um teste baseado em Intelecto, recorrendo a uma lembrança precisa de algo que já leu ou estudou."
-        }
-    },
-    {
-        nome: "Professor",
-        descricao: "Você dedicou sua vida a ensinar e pesquisar, e em algum ponto seus estudos tocaram em assuntos que a maioria das academias prefere ignorar. Registros incompletos, lendas locais e relatos descartados como superstição começaram a formar um padrão perturbador demais para ignorar.",
-        pericias: ["Ciências", "Investigação"],
-        habilidade: {
-            nome: "Saber é Poder",
-            descricao: "Sua disciplina intelectual permite extrair clareza mesmo sob pressão. Quando faz um teste usando Intelecto, você pode gastar 2 PE para receber +5 nesse teste, aplicando anos de rigor acadêmico ao problema à sua frente."
         }
     },
     {
@@ -1378,7 +1546,39 @@ const origens = [
             nome: "Eu Já Vi o Impossível",
             descricao: "O que você presenciou tirou de você a capacidade de se assustar com o comum. Recebe +5 em testes para resistir a efeitos paranormais que causariam medo, porque o pior que podia acontecer, já aconteceu."
         }
+    },
+    {
+        nome: "Cobaia",
+        descricao: "Você passou por experimentos que ninguém deveria sobreviver, feitos por mãos que viam seu corpo como matéria-prima e não como uma vida. Algo em você foi reescrito no processo — uma parte do seu corpo não é mais inteiramente humana. Escolha abaixo qual foi a alteração.",
+        pericias: ["Fortitude", "Ciências"],
+        habilidade: {
+            nome: "Corpo Alterado",
+            descricao: "Escolha uma das mutações abaixo para definir a alteração física que os experimentos deixaram em você."
+        }
     }
+];
+
+// ============================================================
+// MUTAÇÕES DA ORIGEM "COBAIA"
+// ============================================================
+// Cada mutação altera uma parte do corpo, concedendo um benefício mecânico
+// claro em troca de um custo de Sanidade sempre que esse benefício é usado.
+const mutacoesCobaia = [
+    { nome: "Garras de Lobo", descricao: "Suas unhas endureceram e se alongaram, podendo se retrair sob a pele quando não usadas.", beneficio: "Ataques desarmados feitos com as garras causam +1d6 de dano.", custo: "Sempre que ferir alguém com as garras, sofre +1 dado extra na perda de Sanidade daquele teste." },
+    { nome: "Nadadeiras", descricao: "Entre seus dedos cresceram membranas finas e resistentes, e seus pés se alargaram como os de um nadador nato.", beneficio: "Nada sem penalidade e recebe +5 em testes de Atletismo na água.", custo: "Fora d'água por muito tempo, sofre +1 dado extra na perda de Sanidade em testes de Fortitude." },
+    { nome: "Olhos de Gato", descricao: "Suas pupilas se tornaram verticais e refletem a luz no escuro, enxergando onde ninguém mais consegue.", beneficio: "Ignora penalidades de Percepção causadas por pouca luz ou escuridão.", custo: "Luz repentina e forte cega você por um turno e causa +1 dado extra na perda de Sanidade." },
+    { nome: "Pele Escamosa", descricao: "Placas rígidas e ásperas substituíram parte da sua pele, como as de um réptil.", beneficio: "Recebe +1 de Defesa.", custo: "Sempre que alguém repara ou comenta sobre sua pele, sofre +1 dado extra na perda de Sanidade." },
+    { nome: "Membrana Alar", descricao: "Uma fina membrana de pele se estende entre seus braços e o tronco, esticando-se ao abrir os braços.", beneficio: "Reduz à metade o dano de quedas e permite planar curtas distâncias.", custo: "Ao usar a membrana em público, sofre +1 dado extra na perda de Sanidade." },
+    { nome: "Músculos Hipertrofiados", descricao: "Suas fibras musculares se multiplicaram muito além do normal, deformando visivelmente seus braços e ombros.", beneficio: "Em testes de Força, você conta com o dobro do seu Vigor, em vez de uma vez só.", custo: "Sempre que usar esse benefício, sofre +1 dado extra na perda de Sanidade." },
+    { nome: "Sentidos de Cão", descricao: "Seu olfato e sua audição se tornaram absurdamente mais aguçados que os de qualquer humano.", beneficio: "Recebe +5 em testes de Percepção para rastrear por cheiro ou som.", custo: "Em ambientes barulhentos ou com cheiros fortes, sofre +1 dado extra na perda de Sanidade." },
+    { nome: "Regeneração Acelerada", descricao: "Seus tecidos se recompõem visivelmente mais rápido que o normal, às vezes de forma perturbadora.", beneficio: "Recupera o dobro de Pontos de Vida ao descansar.", custo: "Ao sofrer um ferimento grave, testemunhar a própria regeneração causa +1 dado extra na perda de Sanidade." },
+    { nome: "Carapaça Óssea", descricao: "Placas de osso cresceram sob a pele em pontos do seu corpo, endurecendo-o como uma armadura natural.", beneficio: "Recebe +2 de Defesa.", custo: "Sofre -1 em testes de Furtividade e +1 dado extra na perda de Sanidade sempre que é visto sem roupas que a cubram." },
+    { nome: "Segunda Pálpebra", descricao: "Uma membrana transparente extra protege seus olhos, semelhante à de répteis e aves.", beneficio: "É imune a efeitos que cegam ou ofuscam a visão.", custo: "Sempre que alguém nota a membrana de perto, sofre +1 dado extra na perda de Sanidade." },
+    { nome: "Veneno Sob a Pele", descricao: "Glândulas desconhecidas se formaram em sua boca ou mãos, produzindo uma secreção tóxica.", beneficio: "Um ataque corpo a corpo bem-sucedido por cena pode injetar o veneno, causando dano adicional ao longo do tempo.", custo: "Sempre que usar o veneno contra alguém, sofre +1 dado extra na perda de Sanidade." },
+    { nome: "Cauda Preênsil", descricao: "Uma cauda flexível e forte cresceu na base da sua coluna, capaz de segurar objetos leves.", beneficio: "Recebe +2 em testes de Acrobacia envolvendo equilíbrio.", custo: "Esconder a cauda em público é desconfortável; ao ser descoberta, sofre +1 dado extra na perda de Sanidade." },
+    { nome: "Pulmões Adaptados", descricao: "Sua capacidade pulmonar cresceu muito além do normal, e seu sangue resiste melhor a substâncias tóxicas.", beneficio: "Pode prender a respiração por até 20 minutos e recebe +5 para resistir a venenos e gases inalados.", custo: "Sempre que usa esse benefício, uma lembrança dos experimentos aflora, causando +1 dado extra na perda de Sanidade." },
+    { nome: "Reflexos Turbinados", descricao: "Seu sistema nervoso foi acelerado, fazendo seu corpo reagir antes mesmo de você processar o perigo conscientemente.", beneficio: "Recebe +2 na Iniciativa.", custo: "Em combates longos ou muito caóticos, a sobrecarga sensorial causa +1 dado extra na perda de Sanidade." },
+    { nome: "Ecolocalização", descricao: "Sua garganta foi alterada e agora você pode emitir estalos agudos, quase inaudíveis, que retornam como um mapa sonoro do ambiente.", beneficio: "Pode 'enxergar' por som em total escuridão, ignorando penalidades de Percepção nesses casos.", custo: "Usar essa habilidade perto de outras pessoas revela sua voz alterada; ao ser ouvido, sofre +1 dado extra na perda de Sanidade." }
 ];
 
 // ============================================================
@@ -2594,7 +2794,7 @@ const rituais = {
         },
         {
             nome: `Sangue Diluído`,
-            circulo: 2,
+            circulo: 1,
             detalhes: `Execução: reação • Alcance: pessoal ou toque • Alvo: você ou 1 aliado • Duração: instantânea`,
             descricao: `Ao ser atingido, seu corpo dilui parte do dano em água. Reduz o dano de um único ataque em 15 pontos.`,
             consagracao: `+3 PE: reduz o dano em 30 pontos. Requer 3º círculo.`,
@@ -3067,9 +3267,17 @@ function mostrarOrigens() {
 
         container.appendChild(card);
     });
+
+    if (origemSelecionada) renderDetalhesOrigem();
 }
 
+const LIMITE_MUTACOES_COBAIA = 2;
+
 function selecionarOrigem(origem, elemento) {
+    if (!origemSelecionada || origemSelecionada.nome !== origem.nome) {
+        mutacoesCobaiaSelecionadas = []; // trocar de origem reseta as mutações escolhidas
+    }
+
     origemSelecionada = origem;
 
     document.querySelectorAll(".card-origem").forEach(card => {
@@ -3080,26 +3288,136 @@ function selecionarOrigem(origem, elemento) {
         elemento.classList.add("selecionada");
     }
 
-    const detalhes = document.getElementById("detalhesOrigem");
-
-    if (detalhes) {
-        detalhes.innerHTML = `
-            <h2>${origem.nome}</h2>
-
-            <p class="descricao-origem">
-                ${origem.descricao}
-            </p>
-
-            <h3>HABILIDADE DE ORIGEM</h3>
-
-            <h4>${origem.habilidade.nome}</h4>
-
-            <p>${origem.habilidade.descricao}</p>
-        `;
-    }
-
+    renderDetalhesOrigem();
     atualizarCaracteristicas();
     salvarProgresso();
+}
+
+function renderDetalhesOrigem() {
+    const detalhes = document.getElementById("detalhesOrigem");
+
+    if (!detalhes || !origemSelecionada) return;
+
+    detalhes.innerHTML = `
+        <h2>${origemSelecionada.nome}</h2>
+
+        <p class="descricao-origem">
+            ${origemSelecionada.descricao}
+        </p>
+
+        <h3>HABILIDADE DE ORIGEM</h3>
+
+        <h4>${origemSelecionada.habilidade.nome}</h4>
+
+        <p>${origemSelecionada.habilidade.descricao}</p>
+
+        ${origemSelecionada.nome === "Cobaia" ? renderSeletorMutacaoCobaia() : ""}
+    `;
+}
+
+// Penalidade permanente de Sanidade máxima por causa das mutações da Cobaia:
+// 1 mutação escolhida = perde 2/3 da Sanidade base (arredondando para cima);
+// 2 mutações escolhidas = perde metade da Sanidade base (arredondando para cima).
+function penalidadeSanidadeCobaia() {
+    if (!origemSelecionada || origemSelecionada.nome !== "Cobaia" || !classeSelecionada) return 0;
+
+    const qtd = mutacoesCobaiaSelecionadas.length;
+    const sanBase = classeSelecionada.san;
+
+    if (qtd === 1) return Math.ceil(sanBase * (2 / 3));
+    if (qtd >= 2) return Math.ceil(sanBase / 2);
+    return 0;
+}
+
+// Monta a grade de escolha das mutações da origem "Cobaia" — até 2 ao mesmo tempo
+function renderSeletorMutacaoCobaia() {
+    const qtd = mutacoesCobaiaSelecionadas.length;
+    const limiteAtingido = qtd >= LIMITE_MUTACOES_COBAIA;
+
+    const cartoes = mutacoesCobaia.map(m => {
+        const selecionada = mutacoesCobaiaSelecionadas.includes(m.nome);
+        const desabilitado = !selecionada && limiteAtingido;
+        return `
+        <button type="button"
+                class="card-mutacao ${selecionada ? "selecionada" : ""} ${desabilitado ? "desabilitada" : ""}"
+                ${desabilitado ? "disabled" : ""}
+                onclick="toggleMutacaoCobaia('${m.nome.replace(/'/g, "\\'")}')">
+            <div class="mutacao-cabecalho">
+                <h4>${m.nome}</h4>
+                ${selecionada ? `<span class="tag-mutacao-selecionada">Escolhida</span>` : ""}
+            </div>
+            <p class="mutacao-descricao">${m.descricao}</p>
+            <div class="mutacao-linha mutacao-linha-beneficio">
+                <span class="mutacao-rotulo">Benefício</span>
+                <span class="mutacao-texto">${m.beneficio}</span>
+            </div>
+            <div class="mutacao-linha mutacao-linha-custo">
+                <span class="mutacao-rotulo">Custo</span>
+                <span class="mutacao-texto">${m.custo}</span>
+            </div>
+        </button>
+        `;
+    }).join("");
+
+    const penalidade = penalidadeSanidadeCobaia();
+    const textoPenalidade = qtd === 1
+        ? `1 mutação escolhida — perde ${penalidade} de Sanidade máxima permanentemente (2/3 da Sanidade base, arredondado para cima).`
+        : qtd >= 2
+            ? `2 mutações escolhidas — perde ${penalidade} de Sanidade máxima permanentemente (metade da Sanidade base, arredondado para cima).`
+            : `Nenhuma mutação escolhida ainda.`;
+
+    return `
+        <div class="cabecalho-secao-mutacoes">
+            <h3>ESCOLHA AS MUTAÇÕES (até ${LIMITE_MUTACOES_COBAIA})</h3>
+            <p class="subtitulo-secao-mutacoes">
+                ${qtd}/${LIMITE_MUTACOES_COBAIA} escolhidas${mutacoesCobaiaSelecionadas.length ? ` — <strong>${mutacoesCobaiaSelecionadas.join(", ")}</strong>` : ""}.
+            </p>
+            <p class="aviso-penalidade-cobaia">${textoPenalidade}</p>
+        </div>
+        <div class="grade-mutacoes">${cartoes}</div>
+    `;
+}
+
+function toggleMutacaoCobaia(nomeMutacao) {
+    const idx = mutacoesCobaiaSelecionadas.indexOf(nomeMutacao);
+
+    if (idx >= 0) {
+        mutacoesCobaiaSelecionadas.splice(idx, 1);
+    } else if (mutacoesCobaiaSelecionadas.length < LIMITE_MUTACOES_COBAIA) {
+        mutacoesCobaiaSelecionadas.push(nomeMutacao);
+    }
+
+    renderDetalhesOrigem();
+    atualizarCaracteristicas();
+    salvarProgresso();
+}
+
+// Retorna {nome, descricao} da habilidade de origem a ser exibida na ficha/PDF —
+// para a Cobaia, mescla as mutações escolhidas e a penalidade de Sanidade; para as demais, é a habilidade fixa.
+function habilidadeOrigemAtual() {
+    if (!origemSelecionada) return { nome: "", descricao: "" };
+
+    if (origemSelecionada.nome === "Cobaia") {
+        const mutacoes = mutacoesCobaiaSelecionadas
+            .map(nome => mutacoesCobaia.find(m => m.nome === nome))
+            .filter(Boolean);
+
+        if (mutacoes.length === 0) {
+            return { nome: origemSelecionada.habilidade.nome, descricao: origemSelecionada.habilidade.descricao };
+        }
+
+        const penalidade = penalidadeSanidadeCobaia();
+        const descricao = mutacoes
+            .map(m => `${m.nome}: ${m.descricao} Benefício: ${m.beneficio} Custo: ${m.custo}`)
+            .join(" | ") + ` Perda permanente de Sanidade máxima por causa das mutações: ${penalidade}.`;
+
+        return {
+            nome: `Corpo Alterado — ${mutacoes.map(m => m.nome).join(" + ")}`,
+            descricao
+        };
+    }
+
+    return origemSelecionada.habilidade;
 }
 
 // ============================================================
@@ -3215,10 +3533,9 @@ function renderProgressaoInterativaHTML(classe) {
                     </button>
                 `).join("")}
             </div>
-
             ${trilhaAtual ? `
                 <div class="painel-poderes-trilha">
-                    <h4 class="painel-poderes-trilha-titulo">Poderes de ${trilhaAtual.nome}</h4>
+                    <h4>PODERES DE ${trilhaAtual.nome.toUpperCase()}</h4>
                     <div class="grade-poderes-trilha">
                         ${trilhaAtual.poderes.map(p => `
                             <div class="poder-trilha-item">
@@ -3326,33 +3643,87 @@ function tipoLinhaProgressao(habilidade) {
     return "fixo";
 }
 
+// Verdadeiro quando o personagem já alcançou este nível de NEX
+function nexAtingido(nex) {
+    return nexPersonagem >= nex;
+}
+
 function celulaProgressao(progresso) {
+    const conteudo = conteudoProgressao(progresso);
+
+    if (!nexAtingido(progresso.nex)) {
+        return `
+            <div class="conteudo-bloqueado" aria-disabled="true">
+                ${conteudo}
+            </div>
+            <em class="linha-nex-bloqueada-aviso">Bloqueado até NEX ${progresso.nex}%</em>
+        `;
+    }
+
+    return conteudo;
+}
+
+// Monta o conteúdo normal de uma linha de progressão, independente de o NEX já ter sido alcançado.
+// Quando o nível ainda não foi alcançado, celulaProgressao() envolve este mesmo conteúdo
+// em um contêiner "apenas inacessível" (visível, porém desabilitado), em vez de escondê-lo.
+function conteudoProgressao(progresso) {
+    let base;
+
     if (progresso.habilidade === "Habilidade de Trilha") {
         const trilha = trilhaSelecionada[categoriaSelecionada];
         const poder = poderTrilhaParaNex(categoriaSelecionada, progresso.nex);
 
         if (!trilha) {
-            return `<em class="linha-nex-vazia">Escolha uma trilha abaixo</em>`;
+            base = `<em class="linha-nex-vazia">Escolha uma trilha abaixo</em>`;
+        } else if (!poder) {
+            base = `<em class="linha-nex-vazia">${trilha.nome}: esta classe não recebe poder de trilha neste NEX</em>`;
+        } else {
+            base = `
+                <div class="poder-resolvido">
+                    <strong>${poder.titulo}</strong>
+                    <span class="tag-trilha">${trilha.nome}</span>
+                </div>
+                <p class="poder-resolvido-efeito">${poder.efeito}</p>
+            `;
         }
+    } else if (progresso.habilidade.startsWith("Poder de ")) {
+        base = renderSelectTalento(categoriaSelecionada, progresso.nex);
+    } else {
+        base = `<span class="linha-nex-fixa">${progresso.habilidade}</span>`;
+    }
 
-        if (!poder) {
-            return `<em class="linha-nex-vazia">${trilha.nome}: esta classe não recebe poder de trilha neste NEX</em>`;
-        }
+    // Em TODO nível de NEX (5, 10, 15...), Combatente/Especialista escolhem entre Sanidade ou Ritual.
+    return base + renderEscolhaSanidadeRitual(categoriaSelecionada, progresso.nex);
+}
 
-        return `
-            <div class="poder-resolvido">
-                <strong>${poder.titulo}</strong>
-                <span class="tag-trilha">${trilha.nome}</span>
+// Escolha "Sanidade ou Ritual" — aparece em TODO nível de NEX para Combatente/Especialista.
+// O círculo do ritual disponível cresce com o NEX atual do personagem, igual ao Ocultista.
+function renderEscolhaSanidadeRitual(categoria, nex) {
+    if (categoria === "ocultista" || !classeSelecionada) return "";
+
+    const optouRitual = !!(escolhasNexRitual[categoria] && escolhasNexRitual[categoria][nex]);
+    const circuloMaximo = circuloMaximoPorNex(nexPersonagem);
+    const ganhaAutomatico = nex % 15 === 0;
+
+    return `
+        <div class="escolha-nex-sanidade-ritual">
+            <label class="rotulo-escolha-nex">Sanidade ou Ritual (NEX ${nex}%)</label>
+            <div class="escolha-nex-botoes">
+                <button type="button"
+                        class="botao-escolha-nex ${!optouRitual ? "ativa" : ""}"
+                        onclick="escolherSanidadeOuRitualNex('${categoria}', ${nex}, false)">
+                    +${classeSelecionada.sanNex} Sanidade
+                </button>
+                <button type="button"
+                        class="botao-escolha-nex ${optouRitual ? "ativa" : ""}"
+                        onclick="escolherSanidadeOuRitualNex('${categoria}', ${nex}, true)">
+                    1 Ritual (até ${circuloMaximo}º círculo)
+                </button>
             </div>
-            <p class="poder-resolvido-efeito">${poder.efeito}</p>
-        `;
-    }
-
-    if (progresso.habilidade.startsWith("Poder de ")) {
-        return renderSelectTalento(categoriaSelecionada, progresso.nex);
-    }
-
-    return `<span class="linha-nex-fixa">${progresso.habilidade}</span>`;
+            ${ganhaAutomatico ? `<p class="talento-descricao">Além da escolha acima, este NEX concede 1 ritual automático de graça.</p>` : ""}
+            ${optouRitual ? `<p class="talento-descricao">Vaga liberada — escolha o ritual na Etapa de Rituais.</p>` : ""}
+        </div>
+    `;
 }
 
 // Retorna o poder da trilha escolhida correspondente a um NEX específico (10/40/65/99)
@@ -3367,6 +3738,7 @@ function renderSelectTalento(categoria, nex) {
     const lista = talentos[categoria] || [];
     const atual = (talentosEscolhidos[categoria] && talentosEscolhidos[categoria][nex]) || "";
     const talentoObj = lista.find(t => t.nome === atual);
+    const idDropdown = `dropdown-talento-${categoria}-${nex}`;
 
     const opcoes = lista.map(t => `
         <button type="button"
@@ -3377,14 +3749,14 @@ function renderSelectTalento(categoria, nex) {
     `).join("");
 
     return `
-        <div class="dropdown-talento">
+        <div class="dropdown-talento" id="${idDropdown}">
             <button type="button"
                     class="dropdown-talento-toggle"
-                    onclick="toggleDropdownTalento(event)">
+                    onclick="toggleDropdownTalento(event, '${idDropdown}')">
                 <span>${atual || "— escolher talento —"}</span>
                 <span class="dropdown-talento-seta">▾</span>
             </button>
-            <div class="dropdown-talento-lista">
+            <div class="dropdown-talento-lista" hidden>
                 <button type="button"
                         class="dropdown-talento-opcao ${atual === "" ? "ativa" : ""}"
                         onclick="escolherTalento('${categoria}', ${nex}, '')">
@@ -3397,42 +3769,57 @@ function renderSelectTalento(categoria, nex) {
     `;
 }
 
-// Abre/fecha o dropdown customizado de talento, fechando qualquer outro que esteja aberto.
-// Usa o próprio botão clicado como referência (não um id) porque a mesma lista de
-// progressão é renderizada tanto na etapa 03 quanto na etapa 06 — um id fixo faria
-// document.getElementById sempre pegar a primeira cópia no HTML, ignorando a visível.
-// Controla a visibilidade só por classe CSS (.aberta) — usar o atributo "hidden" aqui
-// conflita com o "display: flex" do CSS e a lista nunca fecha de verdade.
-function toggleDropdownTalento(evento) {
+// Abre/fecha o dropdown customizado de talento, fechando qualquer outro que esteja aberto
+function toggleDropdownTalento(evento, idDropdown) {
     evento.stopPropagation();
 
-    const dropdown = evento.currentTarget.closest(".dropdown-talento");
+    const dropdown = document.getElementById(idDropdown);
     if (!dropdown) return;
 
     const lista = dropdown.querySelector(".dropdown-talento-lista");
-    const jaAberto = lista.classList.contains("aberta");
+    const jaAberto = !lista.hidden;
 
-    document.querySelectorAll(".dropdown-talento-lista.aberta").forEach(el => el.classList.remove("aberta"));
+    document.querySelectorAll(".dropdown-talento-lista").forEach(el => { el.hidden = true; });
     document.querySelectorAll(".dropdown-talento.aberto").forEach(el => el.classList.remove("aberto"));
 
     if (!jaAberto) {
-        lista.classList.add("aberta");
+        lista.hidden = false;
         dropdown.classList.add("aberto");
     }
 }
 
 // Fecha qualquer dropdown de talento aberto ao clicar fora dele
 document.addEventListener("click", () => {
-    document.querySelectorAll(".dropdown-talento-lista.aberta").forEach(el => el.classList.remove("aberta"));
+    document.querySelectorAll(".dropdown-talento-lista").forEach(el => { el.hidden = true; });
     document.querySelectorAll(".dropdown-talento.aberto").forEach(el => el.classList.remove("aberto"));
 });
 
 // Salva a escolha de talento para um slot de NEX específico dentro da categoria
 function escolherTalento(categoria, nex, nomeTalento) {
+    if (!nexAtingido(nex)) return; // trava de segurança — o NEX ainda não foi alcançado
+
     if (!talentosEscolhidos[categoria]) talentosEscolhidos[categoria] = {};
     talentosEscolhidos[categoria][nex] = nomeTalento;
 
     atualizarPaineisDeProgressao();
+    salvarProgresso();
+}
+
+// Salva a escolha de Sanidade OU Ritual para um nível de NEX específico (Combatente/Especialista)
+// quiserRitual = false → +Sanidade neste NEX; true → libera 1 vaga de ritual (escolhida na Etapa de Rituais)
+function escolherSanidadeOuRitualNex(categoria, nex, quiserRitual) {
+    if (!nexAtingido(nex)) return; // trava de segurança — o NEX ainda não foi alcançado
+
+    if (!escolhasNexRitual[categoria]) escolhasNexRitual[categoria] = {};
+
+    if (quiserRitual) {
+        escolhasNexRitual[categoria][nex] = true;
+    } else {
+        delete escolhasNexRitual[categoria][nex];
+    }
+
+    atualizarPaineisDeProgressao();
+    atualizarPainelRituais();
     salvarProgresso();
 }
 
@@ -3493,6 +3880,12 @@ function selecionarElementoRitual(elemento) {
     atualizarPainelRituais();
 }
 
+// Rituais conhecidos considerando a categoria: Ocultista escolhe livremente
+// (dentro do limite); Combatente/Especialista só conhecem o que vier da escolha de NEX
+function todosRituaisConhecidos() {
+    return rituaisConhecidos;
+}
+
 function ritualConhecido(elemento, nome) {
     return rituaisConhecidos.some(r => r.elemento === elemento && r.nome === nome);
 }
@@ -3503,8 +3896,14 @@ function toggleRitualConhecido(elemento, nome) {
     if (idx >= 0) {
         rituaisConhecidos.splice(idx, 1);
     } else {
+        if (rituaisConhecidos.length >= limiteRituais()) {
+            return;
+        }
         const ritual = (rituais[elemento] || []).find(r => r.nome === nome);
-        if (ritual) rituaisConhecidos.push({ ...ritual, elemento });
+        if (!ritual || ritual.circulo > circuloMaximoRitualAtual()) {
+            return;
+        }
+        rituaisConhecidos.push({ ...ritual, elemento });
     }
 
     atualizarPainelRituais();
@@ -3522,6 +3921,8 @@ function renderizarListaRituaisElemento() {
     }
 
     const lista = [...(rituais[elementoRitualAtivo] || [])].sort((a, b) => a.circulo - b.circulo);
+    const circuloMaximo = circuloMaximoRitualAtual();
+    const limite = limiteRituais();
 
     const grupos = [1, 2, 3, 4].map(circulo => ({
         circulo,
@@ -3537,18 +3938,28 @@ function renderizarListaRituaisElemento() {
             </div>
 
             <div class="grade-rituais">
-                ${grupo.itens.map(r => `
-                    <div class="card-ritual elemento-${elementoRitualAtivo} ${ritualConhecido(elementoRitualAtivo, r.nome) ? "conhecido" : ""}">
+                ${grupo.itens.map(r => {
+                    const conhecido = ritualConhecido(elementoRitualAtivo, r.nome);
+                    const acimaDoCirculo = r.circulo > circuloMaximo;
+                    const semVaga = rituaisConhecidos.length >= limite;
+                    const bloqueado = !conhecido && (semVaga || acimaDoCirculo);
+
+                    return `
+                    <div class="card-ritual elemento-${elementoRitualAtivo} ${conhecido ? "conhecido" : ""} ${bloqueado ? "bloqueado-limite" : ""}">
                         <div class="card-ritual-topo">
                             <h4>${r.nome}</h4>
                             <label class="checkbox-ritual">
                                 <input type="checkbox"
-                                       ${ritualConhecido(elementoRitualAtivo, r.nome) ? "checked" : ""}
+                                       ${conhecido ? "checked" : ""}
+                                       ${bloqueado ? "disabled" : ""}
                                        onchange="toggleRitualConhecido('${elementoRitualAtivo}', '${r.nome.replace(/'/g, "\\'")}')">
                                 <span class="checkbox-ritual-caixa"></span>
                                 Conhece
                             </label>
                         </div>
+
+                        ${acimaDoCirculo && !conhecido ? `<p class="aviso-vazio">Requer NEX mais alto para lançar círculos maiores.</p>` : ""}
+                        ${!acimaDoCirculo && semVaga && !conhecido ? `<p class="aviso-vazio">Sem vaga de ritual disponível — libere mais uma (Ocultista sobe de NEX; Combatente/Especialista troca Sanidade por Ritual num Poder de Classe).</p>` : ""}
 
                         <p class="ritual-tag">${r.detalhes}</p>
                         <p class="ritual-descricao">${r.descricao}</p>
@@ -3567,7 +3978,8 @@ function renderizarListaRituaisElemento() {
                             </div>
                         ` : ""}
                     </div>
-                `).join("")}
+                `;
+                }).join("")}
             </div>
         </div>
     `).join("");
@@ -3578,26 +3990,56 @@ function renderizarResumoRituais() {
 
     if (!cont) return;
 
-    if (rituaisConhecidos.length === 0) {
-        cont.innerHTML = `<p class="aviso-vazio">Nenhum ritual conhecido ainda — marque "Conhece" nos rituais abaixo.</p>`;
+    if (!categoriaSelecionada) {
+        cont.innerHTML = `<p class="aviso-vazio">Escolha uma classe antes de ver os rituais.</p>`;
+        return;
+    }
+
+    const conhecidos = rituaisConhecidos;
+    const limite = limiteRituais();
+    const dt = dtResistenciaRitual();
+
+    const explicacao = categoriaSelecionada === "ocultista"
+        ? `Vagas ganhas automaticamente com o NEX (3 iniciais + 1 por nível).`
+        : `Vagas ganhas trocando "Sanidade" por "1 Ritual" em qualquer NEX, na tela de Classe, mais 1 ritual automático a cada 15% de NEX. O círculo disponível sobe com o NEX.`;
+
+    const caixaDT = `
+        <div class="caixa-dt-ritual">
+            <span class="rotulo-dt-ritual">DT de resistência dos seus rituais</span>
+            <strong class="valor-dt-ritual">${dt}</strong>
+            <span class="formula-dt-ritual">(10 + Presença ${atributos.presenca} + ${incrementosNex()} por NEX)</span>
+        </div>
+    `;
+
+    if (conhecidos.length === 0) {
+        cont.innerHTML = `
+            ${caixaDT}
+            <p class="aviso-vazio">Nenhum ritual conhecido ainda (limite atual: ${limite}). ${explicacao}</p>
+        `;
         return;
     }
 
     cont.innerHTML = `
-        <h3>RITUAIS CONHECIDOS (${rituaisConhecidos.length})</h3>
+        ${caixaDT}
+        <h3>RITUAIS CONHECIDOS (${conhecidos.length} / ${limite})</h3>
         <div class="chips-rituais">
-            ${rituaisConhecidos.map(r => `<span class="chip-ritual">${r.nome} <small>(${r.circulo}º círculo)</small></span>`).join("")}
+            ${conhecidos.map(r => `<span class="chip-ritual">${r.nome} <small>(${r.circulo}º círculo)</small></span>`).join("")}
         </div>
+        <p class="aviso-vazio">${explicacao}</p>
+        ${conhecidos.length >= limite ? `<p class="aviso-vazio">Limite de rituais atingido — desmarque um ritual para trocar.</p>` : ""}
     `;
 }
 
 // Usado na Ficha Final e no Modo de Jogo
 function gerarRituaisConhecidosHTML() {
-    if (rituaisConhecidos.length === 0) {
-        return "<p>Nenhum ritual conhecido.</p>";
+    const conhecidos = todosRituaisConhecidos();
+    const caixaDT = `<p class="ficha-dt-ritual"><strong>DT de resistência dos rituais:</strong> ${dtResistenciaRitual()} (10 + Presença ${atributos.presenca} + ${incrementosNex()} por NEX)</p>`;
+
+    if (conhecidos.length === 0) {
+        return caixaDT + "<p>Nenhum ritual conhecido.</p>";
     }
 
-    return rituaisConhecidos.map(r => `
+    return caixaDT + conhecidos.map(r => `
         <div class="ficha-ritual-item">
             <h4>${r.nome} <span class="circulo-ritual">Círculo ${r.circulo}</span></h4>
             <p class="ritual-tag">${r.detalhes}</p>
@@ -3634,12 +4076,13 @@ function atualizarCaracteristicas() {
     const incrementos = incrementosNex();
     const pvSugerido = classeSelecionada.pv + atributos.vigor + incrementos * (classeSelecionada.pvNex + atributos.vigor);
     const peSugerido = classeSelecionada.pe + atributos.presenca + incrementos * (classeSelecionada.peNex + atributos.presenca);
-    const sanSugerido = classeSelecionada.san + incrementos * classeSelecionada.sanNex;
+    const sanSugerido = classeSelecionada.san + sanidadeGanhaPorNex() - penalidadeSanidadeCobaia();
     const protecaoSugerida = protecaoEquipadaTexto();
     const defesaSugerida = sugestaoDefesa();
     const esquivaSugerida = sugestaoEsquiva();
     const bloqueioSugerido = sugestaoBloqueio();
     const contraAtaqueSugerido = sugestaoContraAtaque();
+    const dtSugerida = dtResistenciaRitual();
 
     const valorPV = statsManuais.pv !== null ? statsManuais.pv : pvSugerido;
     const valorPE = statsManuais.pe !== null ? statsManuais.pe : peSugerido;
@@ -3649,6 +4092,7 @@ function atualizarCaracteristicas() {
     const valorEsquiva = statsManuais.esquiva !== null ? statsManuais.esquiva : esquivaSugerida;
     const valorBloqueio = statsManuais.bloqueio !== null ? statsManuais.bloqueio : bloqueioSugerido;
     const valorContraAtaque = statsManuais.contraAtaque !== null ? statsManuais.contraAtaque : contraAtaqueSugerido;
+    const valorDT = statsManuais.dt !== null ? statsManuais.dt : dtSugerida;
 
     painel.innerHTML = `
         <div class="titulo-caracteristicas">
@@ -3688,7 +4132,7 @@ function atualizarCaracteristicas() {
                 <span>SANIDADE</span>
                 <input type="text" class="campo-stat" value="${valorSAN}"
                        oninput="statManualAlterado('san', this.value)">
-                <small>Sugestão: ${sanSugerido} (sanidade inicial${incrementos > 0 ? ` + ${incrementos}x NEX (${classeSelecionada.sanNex})` : ""})</small>
+                <small>Sugestão: ${sanSugerido} (sanidade inicial + progressão de NEX${categoriaSelecionada !== "ocultista" && contarEscolhasRitualNex(categoriaSelecionada) > 0 ? `, descontando ${contarEscolhasRitualNex(categoriaSelecionada)}x NEX trocado por ritual` : ""}${penalidadeSanidadeCobaia() > 0 ? `, -${penalidadeSanidadeCobaia()} pelas mutações da Cobaia` : ""})</small>
             </div>
 
             <div class="caracteristica">
@@ -3719,6 +4163,13 @@ function atualizarCaracteristicas() {
                 <small>Sugestão: ${contraAtaqueSugerido} (= Defesa) ${estaTreinado("Luta") ? "— disponível (Luta treinada)" : "— precisa de Luta treinada"}</small>
             </div>
 
+            <div class="caracteristica">
+                <span>DT</span>
+                <input type="text" class="campo-stat" value="${valorDT}"
+                       oninput="statManualAlterado('dt', this.value)">
+                <small>Sugestão: ${dtSugerida} (10 + Presença ${atributos.presenca} + ${incrementos}x NEX)</small>
+            </div>
+
         </div>
 
         <div class="detalhe-caracteristicas">
@@ -3747,12 +4198,12 @@ function atualizarCaracteristicas() {
 
                 <p>
                     <strong>
-                        ${origemSelecionada.habilidade.nome}
+                        ${habilidadeOrigemAtual().nome}
                     </strong>
                 </p>
 
                 <p>
-                    ${origemSelecionada.habilidade.descricao}
+                    ${habilidadeOrigemAtual().descricao}
                 </p>
 
             </div>
@@ -3964,7 +4415,7 @@ function obterPersonagem() {
 
         san: statsManuais.san !== null
             ? statsManuais.san
-            : (classeSelecionada ? classeSelecionada.san + incrementosNex() * classeSelecionada.sanNex : 0),
+            : (classeSelecionada ? classeSelecionada.san + sanidadeGanhaPorNex() - penalidadeSanidadeCobaia() : 0),
 
         nex: nexPersonagem,
 
@@ -3983,6 +4434,10 @@ function obterPersonagem() {
         contraAtaque: statsManuais.contraAtaque !== null
             ? statsManuais.contraAtaque
             : sugestaoContraAtaque(),
+
+        dt: statsManuais.dt !== null
+            ? statsManuais.dt
+            : dtResistenciaRitual(),
 
         pericias: textoPericias(),
 
@@ -4248,6 +4703,7 @@ function preencherFicha(personagem) {
         fichaEsquiva: personagem.esquiva,
         fichaBloqueio: personagem.bloqueio,
         fichaContraAtaque: personagem.contraAtaque,
+        fichaDT: personagem.dt,
         fichaPericias: personagem.pericias,
         fichaAgilidade: personagem.atributos.agilidade,
         fichaForca: personagem.atributos.forca,
@@ -4284,8 +4740,8 @@ function preencherFicha(personagem) {
         if (descricao) descricao.textContent = origemSelecionada.descricao;
         if (periciasOrigem) periciasOrigem.textContent = origemSelecionada.pericias.join(", ");
         if (habilidadeOrigem) {
-            habilidadeOrigem.textContent =
-                `${origemSelecionada.habilidade.nome}. ${origemSelecionada.habilidade.descricao}`;
+            const hab = habilidadeOrigemAtual();
+            habilidadeOrigem.textContent = `${hab.nome}. ${hab.descricao}`;
         }
     }
 
@@ -4517,7 +4973,8 @@ function gerarPDF() {
         y += 6;
         paragrafo(origemSelecionada.descricao);
         linhaLabel("Perícias treinadas", origemSelecionada.pericias.join(", "));
-        paragrafo(`${origemSelecionada.habilidade.nome}. ${origemSelecionada.habilidade.descricao}`, 9.5, TEXTO_SUAVE);
+        const habOrigemPdf = habilidadeOrigemAtual();
+        paragrafo(`${habOrigemPdf.nome}. ${habOrigemPdf.descricao}`, 9.5, TEXTO_SUAVE);
     }
 
     // ---------- ATRIBUTOS ----------
@@ -4556,7 +5013,8 @@ function gerarPDF() {
         ["DEFESA", personagem.defesa],
         ["ESQUIVA", personagem.esquiva],
         ["BLOQUEIO (RD)", personagem.bloqueio],
-        ["CONTRA-ATAQUE", personagem.contraAtaque]
+        ["CONTRA-ATAQUE", personagem.contraAtaque],
+        ["DT", personagem.dt]
     ];
     const larguraCarac = LARGURA_UTIL / 3;
     verificarEspaco(58);
@@ -5041,6 +5499,26 @@ function preencherModoJogo(personagem) {
 
     const rituaisJogoEl = document.getElementById("jogoRituais");
     if (rituaisJogoEl) rituaisJogoEl.innerHTML = gerarRituaisConhecidosHTML();
+
+    const regrasEl = document.getElementById("jogoRegrasCombate");
+    if (regrasEl) {
+        regrasEl.innerHTML = regrasCombate.map(r => `
+            <div class="item-regra-combate">
+                <strong>${r.titulo}</strong>
+                <p>${r.texto}</p>
+            </div>
+        `).join("");
+    }
+
+    const condicoesEl = document.getElementById("jogoCondicoes");
+    if (condicoesEl) {
+        condicoesEl.innerHTML = condicoesStatus.map(c => `
+            <div class="item-condicao">
+                <strong>${c.nome}</strong>
+                <p>${c.efeito}</p>
+            </div>
+        `).join("");
+    }
 }
 
 // ============================================================

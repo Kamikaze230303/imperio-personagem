@@ -30,7 +30,7 @@
 
 <div class="inicio-conteudo">
 
-    <div class="simbolo">⛩</div>
+    <div class="simbolo">IMP</div>
 
     <h1>"IMPÉRIO"</h1>
 
@@ -91,7 +91,7 @@
 
 <div class="logo">
 
-    ⛩ "IMPÉRIO"
+    "IMPÉRIO"
 
 </div>
 
@@ -1009,7 +1009,7 @@
 
 
     <div class="ficha-topo">
-        <div class="ficha-topo-emblema">⚜</div>
+        <div class="ficha-topo-emblema">IMP</div>
         <h1>IMPÉRIO</h1>
     </div>
 
@@ -1181,6 +1181,11 @@
                     <span class="valor-caixa" id="fichaContraAtaque"></span>
                 </div>
 
+                <div class="caixa-status">
+                    <span class="rotulo-caixa">DT</span>
+                    <span class="valor-caixa" id="fichaDT"></span>
+                </div>
+
             </div>
 
 
@@ -1340,7 +1345,7 @@
                 class="botao-principal"
                 onclick="abrirModoJogo()">
 
-            🎮 MODO DE JOGO
+            MODO DE JOGO
 
         </button>
 
@@ -1348,7 +1353,7 @@
                 class="botao-secundario"
                 onclick="gerarPDF()">
 
-            ⬇ BAIXAR PDF
+            BAIXAR PDF
 
         </button>
 
@@ -1356,7 +1361,7 @@
                 class="botao-secundario"
                 onclick="gerarImagem()">
 
-            🖼 BAIXAR IMAGEM
+            BAIXAR IMAGEM
 
         </button>
 
@@ -1364,7 +1369,7 @@
                 class="botao-secundario"
                 onclick="compartilharPersonagem()">
 
-            🔗 COMPARTILHAR FICHA
+            COMPARTILHAR FICHA
 
         </button>
 
@@ -1372,7 +1377,7 @@
                 class="botao-secundario"
                 onclick="compartilharSite()">
 
-            🌐 COMPARTILHAR SITE
+            COMPARTILHAR SITE
 
         </button>
 
@@ -1384,7 +1389,7 @@
                 class="botao-secundario"
                 onclick="voltarInicio()">
 
-            ↺ CRIAR OUTRO PERSONAGEM
+            CRIAR OUTRO PERSONAGEM
 
         </button>
 
@@ -1502,7 +1507,7 @@
             <button type="button"
                     class="botao-editar-armas-jogo"
                     onclick="toggleEditorArmasJogo()">
-                ⚔ ALTERAR ARMAS
+                ALTERAR ARMAS
             </button>
 
             <div id="editorArmasJogo"
@@ -1538,8 +1543,30 @@
     </div>
 
 
+    <div class="secao-jogo">
+        <button type="button" class="secao-jogo-header" onclick="toggleSecaoJogo('secaoJogoRegrasCombate')">
+            <span>REGRAS DE COMBATE</span>
+            <span class="seta">▾</span>
+        </button>
+        <div class="secao-jogo-conteudo" id="secaoJogoRegrasCombate">
+            <div id="jogoRegrasCombate" class="lista-regras-combate"></div>
+        </div>
+    </div>
+
+
+    <div class="secao-jogo">
+        <button type="button" class="secao-jogo-header" onclick="toggleSecaoJogo('secaoJogoCondicoes')">
+            <span>CONDIÇÕES DE STATUS</span>
+            <span class="seta">▾</span>
+        </button>
+        <div class="secao-jogo-conteudo" id="secaoJogoCondicoes">
+            <div id="jogoCondicoes" class="lista-condicoes-jogo"></div>
+        </div>
+    </div>
+
+
     <button type="button" class="botao-secundario botao-voltar-ficha" onclick="voltarParaFicha()">
-        ← VER FICHA COMPLETA
+        VER FICHA COMPLETA
     </button>
 
 </div>
